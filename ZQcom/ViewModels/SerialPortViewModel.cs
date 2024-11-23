@@ -36,8 +36,8 @@ namespace ZQcom.ViewModels
         private int _timedSendInterval = 100;                       // 定时发送的时间间隔（毫秒）
         private CancellationTokenSource? _cancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
         private bool _isProcessData;                                // 是否处理数据
-        private int _startPosition = 0;                             // 数据处理的起始位置
-        private int _length = 0;                                    // 数据处理的长度
+        private int _startPosition = 7;                             // 数据处理的起始位置
+        private int _length = 8;                                    // 数据处理的长度
 
         public event EventHandler<string>? DataReceived;            // 数据接收事件
         public ObservableCollection<string>? AvailablePorts { get; set; } // 可用的串口列表
@@ -260,7 +260,7 @@ namespace ZQcom.ViewModels
         }
 
 
-        // 数据处理
+        // 是否处理数据
         public bool IsProcessData
         {
             get => _isProcessData;
@@ -356,7 +356,7 @@ namespace ZQcom.ViewModels
                 if (IsHexSend)
                 {
                     // 检验是否为十六进制字符串
-                    if(IsHexString(data))
+                    if (IsHexString(data))
                     {
                         // 发送转为16进制字节数组的数据
                         _serialPortService.SendData(_serialPort, Convert.FromHexString(data));
@@ -373,6 +373,7 @@ namespace ZQcom.ViewModels
                 {
                     _serialPortService.SendData(_serialPort, data + (AddNewline ? "\r\n" : ""));
                 }
+                // 发送到日志框内
                 LogMessage($"<< {data}");
             }
         }
@@ -405,14 +406,15 @@ namespace ZQcom.ViewModels
                         SendData();
                     }
                 }
-                //catch (OperationCanceledException)
-                //{
-                //    // 当任务被取消时抛出的异常
-                //    Application.Current.Dispatcher.Invoke(() =>
-                //    {
-                //        MessageBox.Show("定时发送已取消", "信息", MessageBoxButton.OK, MessageBoxImage.Information);
-                //    });
-                //}
+                catch (OperationCanceledException)
+                {
+                    // 当任务被取消时抛出的异常
+                    // 注释掉，防止频繁弹出消息框
+                    //Application.Current.Dispatcher.Invoke(() =>
+                    //{
+                    //    MessageBox.Show("定时发送已取消", "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+                    //});
+                }
                 catch (Exception ex)
                 {
                     // 其他异常
@@ -434,14 +436,11 @@ namespace ZQcom.ViewModels
         {
             var sp = (SerialPort)sender;
             string data = sp.ReadExisting();
-            // 格式化数据并输出
-            LogMessage($">> {FormatData(data)}");
-            ReceiveText += FormatData(data);
-
-            if (IsProcessData && StartPosition >= 0 && Length > 0)
-            {
-                ExtractedText = data.Substring(StartPosition, Math.Min(Length, data.Length - StartPosition));
-            }
+            // 格式化数据
+            data = FormatData(data);
+            // 输出到对应框中
+            LogMessage($">> {data}");
+            ProcessData(data);// 处理数据
 
             // 滚动到最底部
             ScrollToBottom();
@@ -483,6 +482,102 @@ namespace ZQcom.ViewModels
         private void LogMessage(string message)
         {
             LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+        }
+        // 发送截取数据
+        private void ExtractedDataMessage(string data)
+        {
+
+            ExtractedText += $"{data}{Environment.NewLine}";
+        }
+        // 发送处理过的数据
+        private void ConvertedDataMessage(string data)
+        {
+            ConvertedText += $"{data}{Environment.NewLine}";
+
+        }
+
+        // 发送到处理数据框
+        // 只有当IsProcessData 为 true 时才进行处理
+        // 开启16进制显示时会以16进制数据处理，不开启则以普通字符串处理
+        private void ProcessData(string data)
+        {
+            if (IsProcessData)
+            {
+                try
+                {
+                    // 获取数据起始位置和长度
+                    int startIndex = StartPosition - 1; // 起始位置从1开始
+                    int length = Length;
+
+                    // 检查起始位置
+                    if (StartPosition <= 0)
+                    {
+                        MessageBox.Show("起始位置不能小于等于0，请重新输入！");
+                        IsProcessData = false; // 关闭处理数据
+                        return;
+                    }
+
+                    // ----根据是否发送16进制数据进行不同处理----
+                    string processedData;
+                    // 移除空格是因为当开启16进制显示时，字符串中会包含空格
+                    string hexDataWithoutSpaces = data.Replace(" ", "");
+
+
+                    // 检查数据长度
+                    if (startIndex + length > hexDataWithoutSpaces.Length)
+                    {
+                        MessageBox.Show("数据长度不足，无法处理！");
+                        IsProcessData = false; // 关闭处理数据
+                        return;
+                    }
+
+                    // 截取数据,并发送
+                    processedData = hexDataWithoutSpaces.Substring(startIndex, length);
+                    ExtractedDataMessage(processedData);
+
+                    // 由于前面已经经过是否显示16进制处理过了，这个判断倒显得怪异
+                    if (IsHexDisplay)
+                    {
+                        // 将16进制字符串转换为字节数组
+                        byte[] bytes = Convert.FromHexString(processedData);
+
+                        // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
+                        if (BitConverter.IsLittleEndian)
+                        {
+                            Array.Reverse(bytes);
+                        }
+
+                        // 将字节数组转换为32位浮点数
+                        float floatValue = BitConverter.ToSingle(bytes, 0);
+
+
+                        ConvertedDataMessage(floatValue.ToString());
+                    }
+                    else
+                    {
+                        // 尝试直接将字符串转换为32位浮点数
+                        if (float.TryParse(processedData, out float result))
+                        {
+                            ConvertedDataMessage(result.ToString());
+                        }
+                        else
+                        {
+                            MessageBox.Show("无法将数据转换为浮点数！");
+                            IsProcessData = false; // 关闭处理数据
+                            return;
+                        }
+                    }
+                }
+                catch (FormatException ex)
+                {
+                    // 其他异常
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"处理数据发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        IsProcessData = false;// 关闭处理数据
+                    });
+                }
+            }
         }
 
         private void ScrollToBottom()
