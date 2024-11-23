@@ -1,29 +1,28 @@
-﻿using System.Windows.Input;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Windows.Controls;
+﻿using Prism.Events;
+using System;
+using ZQcom.Services;
+using ZQcom.ViewModels;
 
 namespace ZQcom.ViewModels
 {
-    public class MainViewModel
+    public class MainViewModel 
     {
-        private SerialPortViewModel _serialPortViewModel;
-        private ChartViewModel _chartViewModel;
+        private readonly IEventAggregator _eventAggregator;
+        private readonly SerialPortViewModel _serialPortViewModel;
+        private readonly ChartViewModel _chartViewModel;
 
         public MainViewModel()
         {
-            _serialPortViewModel = new SerialPortViewModel();
-            _chartViewModel = new ChartViewModel();
+            _eventAggregator = new EventAggregator();
+            _serialPortViewModel = new SerialPortViewModel(_eventAggregator);
+            _chartViewModel = new ChartViewModel(_eventAggregator);
 
-            _serialPortViewModel.DataReceived += OnDataReceived;
+            // 调试信息
+            System.Diagnostics.Debug.WriteLine("MainViewModel initialized");
         }
 
         public SerialPortViewModel SerialPortViewModel => _serialPortViewModel;
         public ChartViewModel ChartViewModel => _chartViewModel;
 
-        private void OnDataReceived(object sender, string data)
-        {
-            //_chartViewModel.AddDataPoint(double.Parse(data));
-        }
     }
 }

@@ -71,7 +71,7 @@
                 <CheckBox Content="禁用动画" IsChecked="{Binding ChartViewModel.IsDisableAnimation}" Margin="0,0,10,0" Height="14" />
                 <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
                 <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="0,0,10,0" />
-                <Button Content="测试按钮" Command="{Binding ChartViewModel.DebugCommand}" Width="80" Margin="10,0,0,0" />
+                <Button Content="测试按钮" Command="{Binding SerialPortViewModel.DebugCommand}" Width="80" Margin="10,0,0,0" />
             </StackPanel>
 
             <Grid DockPanel.Dock="Top" Margin="0,5,0,10">
@@ -84,7 +84,8 @@
                      DisableAnimations="{Binding ChartViewModel.DisableAnimation}"
                      Visibility="{Binding ChartViewModel.ChartVisibility}">
                     <lvc:CartesianChart.AxisX>
-                        <lvc:Axis Labels="{Binding ChartViewModel.ChartModel.Labels}" />
+                        <lvc:Axis MinValue="1" MaxValue="{Binding ChartViewModel.AxisXMaxValue}"
+                        LabelFormatter="{Binding ChartViewModel.XAxisLabelFormatter}" />
                     </lvc:CartesianChart.AxisX>
                     <lvc:CartesianChart.AxisY>
                         <lvc:Axis LabelFormatter="{Binding ChartViewModel.ChartModel.YFormatter}" />

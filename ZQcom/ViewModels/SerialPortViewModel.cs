@@ -11,6 +11,7 @@ using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using System.Text.RegularExpressions;
 using System.Text;
+using ZQcom.Events;
 
 namespace ZQcom.ViewModels
 {
@@ -42,9 +43,14 @@ namespace ZQcom.ViewModels
         public event EventHandler<string>? DataReceived;            // 数据接收事件
         public ObservableCollection<string>? AvailablePorts { get; set; } // 可用的串口列表
 
+        // 事件
+        private readonly IEventAggregator _eventAggregator;
+
+
+
 
         // ------------------------初始化------------------------------
-        public SerialPortViewModel()
+        public SerialPortViewModel(IEventAggregator eventAggregator)
         {
             _serialPortService = new SerialPortService();
             SerialPortNames = [];
@@ -58,6 +64,9 @@ namespace ZQcom.ViewModels
 
             // 绑定接收数据
             _serialPortService.DataReceived += OnDataReceived;
+
+            //发布事件
+            _eventAggregator = eventAggregator;
 
 
             // 用于滚动数据，可能还有用
@@ -521,6 +530,8 @@ namespace ZQcom.ViewModels
                     string processedData;
                     // 移除空格是因为当开启16进制显示时，字符串中会包含空格
                     string hexDataWithoutSpaces = data.Replace(" ", "");
+                    // 最终转换的浮点数据
+                    float floatValue;
 
 
                     // 检查数据长度
@@ -548,7 +559,7 @@ namespace ZQcom.ViewModels
                         }
 
                         // 将字节数组转换为32位浮点数
-                        float floatValue = BitConverter.ToSingle(bytes, 0);
+                        floatValue = BitConverter.ToSingle(bytes, 0);
 
 
                         ConvertedDataMessage(floatValue.ToString());
@@ -558,6 +569,7 @@ namespace ZQcom.ViewModels
                         // 尝试直接将字符串转换为32位浮点数
                         if (float.TryParse(processedData, out float result))
                         {
+                            floatValue = result;
                             ConvertedDataMessage(result.ToString());
                         }
                         else
@@ -567,6 +579,8 @@ namespace ZQcom.ViewModels
                             return;
                         }
                     }
+                    // 发布事件
+                    _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
                 }
                 catch (FormatException ex)
                 {
@@ -588,7 +602,14 @@ namespace ZQcom.ViewModels
 
 
 
-
+        public ICommand DebugCommand => new RelayCommand(Debug);
+        public int debugCount = 0;
+        public void Debug()
+        {
+            //debugCount++;
+            ProcessData("4247EFCF");
+            MessageBox.Show($"Debug");
+        }
 
 
         // ---------------------------------------------------------------------

@@ -6,7 +6,10 @@ using System.Collections.ObjectModel;
 using System.IO.Ports;
 using System.Windows;
 using System.Windows.Input;
+using Prism.Events;
 using ZQcom.Models;
+using System.Net;
+using ZQcom.Events;
 
 namespace ZQcom.ViewModels
 {
@@ -17,13 +20,16 @@ namespace ZQcom.ViewModels
         private int _maxChartPoints = 100;                            // 图表最大数据点数
         private bool _isDisableAnimation = false;                           // 禁用动画
 
-
+        // 用于订阅事件
+        private readonly IEventAggregator _eventAggregator;
 
         // 初始化
-        public ChartViewModel()
+        public ChartViewModel(IEventAggregator eventAggregator)
         {
             _chartModel = new ChartModel();
-
+            // 订阅事件
+            _eventAggregator = eventAggregator;
+            _eventAggregator.GetEvent<DataReceivedEvent>().Subscribe(AddDataPoint);
         }
 
         // ------------------------数据绑定------------------------------
@@ -120,11 +126,12 @@ namespace ZQcom.ViewModels
 
 
         // ------------------------绑定事件------------------------------
-        public ICommand DebugCommand => new RelayCommand(DebugAddPoints);
+        // // 用于调试
+        //public ICommand DebugCommand => new RelayCommand(DebugAddPoints);
 
-        public void DebugAddPoints()
-        {
-            AddDataPoint(DateTime.Now.Millisecond % 100);
-        }
+        //public void DebugAddPoints()
+        //{
+        //    AddDataPoint(DateTime.Now.Millisecond % 100);
+        //}
     }
 }
