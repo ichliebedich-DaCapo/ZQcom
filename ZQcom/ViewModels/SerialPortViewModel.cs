@@ -556,8 +556,8 @@ namespace ZQcom.ViewModels
 
                     // ----根据是否发送16进制数据进行不同处理----
                     string processedData;
-                    // 移除空格是因为当开启16进制显示时，字符串中会包含空格
-                    string hexDataWithoutSpaces = data.Replace(" ", "");
+                    // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
+                    string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
                     // 最终转换的浮点数据
                     float floatValue;
 
