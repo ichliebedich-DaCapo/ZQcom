@@ -45,10 +45,25 @@ namespace ZQcom.ViewModels
         // ------------------------初始化------------------------------
         public SerialPortViewModel()
         {
-            //_serialService = new SerialService();
-            AvailablePorts = new ObservableCollection<string>(SerialPort.GetPortNames());
+            _serialPortService = new SerialPortService();
+            SerialPortNames = new ObservableCollection<string>();
+            BaudRateOptions = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200 };
+            ParityOptions = new ObservableCollection<Parity> { Parity.None, Parity.Odd, Parity.Even, Parity.Mark, Parity.Space };
+            StopBitOptions = new ObservableCollection<StopBits> { StopBits.None, StopBits.One, StopBits.Two, StopBits.OnePointFive };
+            DataBitOptions = new ObservableCollection<int> { 5, 6, 7, 8 };
+
+            PopulateSerialPortNames();
+
+            _serialPortService.DataReceived += OnDataReceived;
+
+
+            // 先留着
+            //_serialService = new SerialPortService();
+            //AvailablePorts = new ObservableCollection<string>(SerialPort.GetPortNames());
             //OpenCommand = new RelayCommand(OpenSerialPort);
 
+
+            // 用于滚动数据，可能还有用
             //_serialService.DataReceived += (s, e) =>
             //{
             //    LogText += e + Environment.NewLine;
@@ -70,6 +85,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _selectedSerialPort = value;
+                RaisePropertyChanged(nameof(SelectedSerialPort));
             }
         }
 
@@ -82,11 +98,11 @@ namespace ZQcom.ViewModels
             set
             {
                 _selectedBaudRate = value;
-                //RaisePropertyChanged(nameof(SelectedBaudRate));
+                RaisePropertyChanged(nameof(SelectedBaudRate));
             }
         }
 
-       // 奇偶校验
+        // 奇偶校验
         public ObservableCollection<Parity> ParityOptions { get; set; }
         public Parity SelectedParity
         {
@@ -94,7 +110,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _selectedParity = value;
-                //RaisePropertyChanged(nameof(SelectedParity));
+                RaisePropertyChanged(nameof(SelectedParity));
             }
         }
 
@@ -106,7 +122,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _selectedStopBits = value;
-                //RaisePropertyChanged(nameof(SelectedStopBits));
+                RaisePropertyChanged(nameof(SelectedStopBits));
             }
         }
 
@@ -118,7 +134,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _selectedDataBits = value;
-                //RaisePropertyChanged(nameof(SelectedDataBits));
+                RaisePropertyChanged(nameof(SelectedDataBits));
             }
         }
 
@@ -129,7 +145,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _openCloseButtonText = value;
-                //RaisePropertyChanged(nameof(OpenCloseButtonText));
+                RaisePropertyChanged(nameof(OpenCloseButtonText));
             }
         }
 
@@ -140,7 +156,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _sendDataText = value;
-                //RaisePropertyChanged(nameof(SendDataText));
+                RaisePropertyChanged(nameof(SendDataText));
             }
         }
 
@@ -151,7 +167,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _logText = value;
-                //RaisePropertyChanged(nameof(LogText));
+                RaisePropertyChanged(nameof(LogText));
             }
         }
 
@@ -163,7 +179,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _receiveText = value;
-                //RaisePropertyChanged(nameof(ReceiveText));
+                RaisePropertyChanged(nameof(ReceiveText));
             }
         }
 
@@ -174,7 +190,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _extractedText = value;
-                //RaisePropertyChanged(nameof(ExtractedText));
+                RaisePropertyChanged(nameof(ExtractedText));
             }
         }
 
@@ -186,7 +202,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _convertedText = value;
-                //RaisePropertyChanged(nameof(ConvertedText));
+                RaisePropertyChanged(nameof(ConvertedText));
             }
         }
 
@@ -197,7 +213,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _isHexSend = value;
-                //RaisePropertyChanged(nameof(IsHexSend));
+                RaisePropertyChanged(nameof(IsHexSend));
             }
         }
 
@@ -208,7 +224,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _isHexDisplay = value;
-                //RaisePropertyChanged(nameof(IsHexDisplay));
+                RaisePropertyChanged(nameof(IsHexDisplay));
             }
         }
 
@@ -219,7 +235,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _addNewline = value;
-                //RaisePropertyChanged(nameof(AddNewline));
+                RaisePropertyChanged(nameof(AddNewline));
             }
         }
 
@@ -231,7 +247,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _isTimedSendEnabled = value;
-                //RaisePropertyChanged(nameof(IsTimedSendEnabled));
+                RaisePropertyChanged(nameof(IsTimedSendEnabled));
             }
         }
 
@@ -242,7 +258,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _timedSendInterval = value;
-                //RaisePropertyChanged(nameof(TimedSendInterval));
+                RaisePropertyChanged(nameof(TimedSendInterval));
             }
         }
 
@@ -254,7 +270,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _isProcessData = value;
-                //RaisePropertyChanged(nameof(IsProcessData));
+                RaisePropertyChanged(nameof(IsProcessData));
             }
         }
 
@@ -265,7 +281,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _startPosition = value;
-                //RaisePropertyChanged(nameof(StartPosition));
+                RaisePropertyChanged(nameof(StartPosition));
             }
         }
 
@@ -276,17 +292,58 @@ namespace ZQcom.ViewModels
             set
             {
                 _length = value;
-                //RaisePropertyChanged(nameof(Length));
+                RaisePropertyChanged(nameof(Length));
             }
         }
 
 
-
-        //public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
+        // ---------------------------------绑定事件----------------------------------------
+        public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
+        public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
         public ICommand SendDataCommand => new RelayCommand(SendData);
-        //public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
-        //public ICommand ToggleTimedSendCommand => new RelayCommand(ToggleTimedSend);
+        public ICommand ToggleTimedSendCommand => new RelayCommand(ToggleTimedSend);
 
+
+        // 刷新串口列表
+        private void PopulateSerialPortNames()
+        {
+            SerialPortNames.Clear();
+            foreach (var port in _serialPortService.GetAvailablePorts())
+            {
+                SerialPortNames.Add(port);
+            }
+        }
+        // 启用/禁用串口
+        private void ToggleSerialPort()
+        {
+            if (_serialPort == null || !_serialPort.IsOpen)
+            {
+                if (string.IsNullOrEmpty(SelectedSerialPort) || !int.TryParse(SelectedBaudRate.ToString(), out int baudRate))
+                {
+                    MessageBox.Show("请选择串口和波特率。");
+                    return;
+                }
+
+                try
+                {
+                    _serialPort = _serialPortService.OpenPort(SelectedSerialPort, baudRate, SelectedParity, SelectedStopBits, SelectedDataBits);
+                    OpenCloseButtonText = "关闭串口";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"打开串口失败: {ex.Message}");
+                }
+            }
+            else
+            {
+                _serialPortService.ClosePort(_serialPort);
+                _serialPort = null;
+                OpenCloseButtonText = "打开串口";
+            }
+        }
+
+
+        // 发送数据
         private async void SendData()
         {
             if (_serialPort == null || !_serialPort.IsOpen)
@@ -310,6 +367,51 @@ namespace ZQcom.ViewModels
                 LogMessage($"发送: >> {data}");
             }
         }
+
+        // 启用/禁用定时发送
+        private async void ToggleTimedSend()
+        {
+            if (_isTimedSendEnabled)
+            {
+                _cancellationTokenSource?.Cancel();
+                _isTimedSendEnabled = false;
+                RaisePropertyChanged(nameof(IsTimedSendEnabled));
+            }
+            else
+            {
+                _cancellationTokenSource = new CancellationTokenSource();
+                _isTimedSendEnabled = true;
+                RaisePropertyChanged(nameof(IsTimedSendEnabled));
+
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(TimedSendInterval, _cancellationTokenSource.Token);
+                    SendData();
+                }
+            }
+        }
+
+        // 接收数据
+        private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
+        {
+            var sp = (SerialPort)sender;
+            string data = sp.ReadExisting();
+            LogMessage($"接收: << {data}");
+            ReceiveText += FormatData(data);
+
+            if (IsProcessData && StartPosition >= 0 && Length > 0)
+            {
+                ExtractedText = data.Substring(StartPosition, Math.Min(Length, data.Length - StartPosition));
+            }
+
+            // 滚动到最底部
+            ScrollToBottom();
+        }
+
+
+
+
+        // 十六进制字符串转字节数组
         private byte[] HexStringToByteArray(string hex)
         {
             int NumberChars = hex.Length;
@@ -318,7 +420,19 @@ namespace ZQcom.ViewModels
                 bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
             return bytes;
         }
+        // 格式化数据
+        private string FormatData(string data)
+        {
+            if (IsHexDisplay)
+            {
+                return BitConverter.ToString(System.Text.Encoding.UTF8.GetBytes(data)).Replace("-", " ");
+            }
+            return data;
+        }
 
+
+
+        // 发送日志消息
         private void LogMessage(string message)
         {
             LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
@@ -335,7 +449,8 @@ namespace ZQcom.ViewModels
 
 
 
-
+        // ---------------------------------------------------------------------
+        // ---------------------------------------------------------------------
 
 
 
