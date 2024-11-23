@@ -5,31 +5,69 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ZQcom.Views" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         mc:Ignorable="d"
-        Title="ZQcom" Height="450" Width="800">
+        Title="ZQcom" Height="1000" Width="1600">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Serial Port View -->
-        <StackPanel Grid.Column="0" Margin="10">
-            <ComboBox ItemsSource="{Binding SerialPortViewModel.AvailablePorts}"
-                      SelectedItem="{Binding SerialPortViewModel.SelectedPort}"
-                      Margin="0,0,0,10"/>
-            <Button Content="Open Serial Port"
-                    Command="{Binding SerialPortViewModel.OpenCommand}"
-                    Margin="0,0,0,10"/>
-            <TextBox Text="{Binding SerialPortViewModel.LogText, Mode=OneWay}"
-                     IsReadOnly="True"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Disabled"
-                     AcceptsReturn="True"
-                     Height="200"/>
-        </StackPanel>
+        <!-- 左侧 -->
+        <DockPanel Grid.Column="0" LastChildFill="True" Margin="10">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                <ComboBox Name="CmbSerialPorts" ItemsSource="{Binding SerialPortNames}" SelectedItem="{Binding SelectedSerialPort}" Width="150" Margin="0,0,10,0" />
+                <Button Content="刷新" Command="{Binding RefreshSerialPortsCommand}" Width="100" />
+                <Button Content="{Binding OpenCloseButtonText}" Command="{Binding ToggleSerialPortCommand}" Width="100" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="波特率:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <ComboBox Name="CmbBaudRates" ItemsSource="{Binding BaudRateOptions}" SelectedItem="{Binding SelectedBaudRate}" Width="100" />
+                <TextBlock Text="校验位:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                <ComboBox Name="CmbParity" ItemsSource="{Binding ParityOptions}" SelectedItem="{Binding SelectedParity}" Width="100" />
+                <TextBlock Text="停止位:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                <ComboBox Name="CmbStopBits" ItemsSource="{Binding StopBitOptions}" SelectedItem="{Binding SelectedStopBits}" Width="100" />
+                <TextBlock Text="数据位:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                <ComboBox Name="CmbDataBits" ItemsSource="{Binding DataBitOptions}" SelectedItem="{Binding SelectedDataBits}" Width="100" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBox Name="TbxSendData" Text="{Binding SendDataText}" Width="200" Margin="0,0,10,0" />
+                <CheckBox Content="十六进制发送" IsChecked="{Binding IsHexSend}" Margin="0,0,10,0" />
+                <CheckBox Content="十六进制显示" IsChecked="{Binding IsHexDisplay}" Margin="0,0,10,0" />
+                <CheckBox Content="自动换行" IsChecked="{Binding AddNewline}" Margin="0,0,10,0" />
+                <Button Content="发送" Command="{Binding SendDataCommand}" Width="100" />
+                <Button Content="定时发送" Command="{Binding ToggleTimedSendCommand}" Width="100" />
+                <TextBox Name="TbxTimedSendInterval" Text="{Binding TimedSendInterval}" Width="88" Margin="0,0,10,0" />
+            </StackPanel>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBox Name="TbxLog" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" Text="{Binding LogText, Mode=OneWay}" Grid.Row="0" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,10">
+                    <CheckBox Content="处理数据" IsChecked="{Binding IsProcessData}" Margin="0,0,10,0" />
+                    <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Name="TbxStartPosition" Text="{Binding StartPosition}" Width="100" Margin="0,0,10,0" />
+                    <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Name="TbxLength" Text="{Binding Length}" Width="100" Margin="0,0,10,0" />
+                </StackPanel>
+                <Grid Grid.Row="2" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Name="TbxExtractedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0" Text="{Binding ExtractedText, Mode=OneWay}" Grid.Column="0" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                    <TextBox Name="TbxConvertedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0" Text="{Binding ConvertedText, Mode=OneWay}" Grid.Column="1" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </Grid>
+            </Grid>
+        </DockPanel>
+
 
         <!-- Chart View -->
         <StackPanel Grid.Column="1" Margin="10">
+            <TextBox Text="Enter point count" Margin="0,10,0,0"/>
+            
             <lvc:CartesianChart Series="{Binding ChartViewModel.ChartModel.Series}" Height="379">
                 <lvc:CartesianChart.AxisX>
                     <lvc:Axis Labels="{Binding ChartViewModel.ChartModel.Labels}"/>
@@ -38,7 +76,7 @@
                     <lvc:Axis LabelFormatter="{Binding ChartViewModel.ChartModel.YFormatter}"/>
                 </lvc:CartesianChart.AxisY>
             </lvc:CartesianChart>
-            <TextBox Text="Enter point count" Margin="0,10,0,0"/>
+            
         </StackPanel>
     </Grid>
 </Window>

@@ -1,50 +1,59 @@
 ﻿using System;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.IO.Ports;
-using System.Threading.Tasks;
-using ZQcom.Models;
 
 namespace ZQcom.Services
 {
-    public class SerialService
+    public class SerialPortService
     {
-        private SerialPort _serialPort;
+        public event EventHandler<SerialDataReceivedEventArgs> DataReceived;
 
-        public event EventHandler<string> DataReceived;
-
-        public async Task OpenAsync(SerialPortModel model)
+        public List<string> GetAvailablePorts()
         {
-            if (_serialPort != null && _serialPort.IsOpen)
+            return SerialPort.GetPortNames().ToList();
+        }
+
+        public SerialPort OpenPort(string portName, int baudRate, Parity parity, StopBits stopBits, int dataBits)
+        {
+            var port = new SerialPort(portName, baudRate)
             {
-                _serialPort.Close();
+                Parity = parity,
+                StopBits = stopBits,
+                DataBits = dataBits
+            };
+            port.DataReceived += OnDataReceived;
+            port.Open();
+            return port;
+        }
+
+        public void ClosePort(SerialPort port)
+        {
+            if (port != null && port.IsOpen)
+            {
+                port.DataReceived -= OnDataReceived;
+                port.Close();
             }
-
-            _serialPort = new SerialPort
-            {
-                PortName = model.PortName,
-                BaudRate = model.BaudRate,
-                Parity = model.Parity,
-                DataBits = model.DataBits,
-                StopBits = model.StopBits
-            };
-
-            _serialPort.DataReceived += (s, e) =>
-            {
-                var data = _serialPort.ReadExisting();
-                DataReceived?.Invoke(this, data);
-            };
-
-            await Task.Run(() => _serialPort.Open());
         }
 
-        public void Close()
+        public void SendData(SerialPort port, string data)
         {
-            _serialPort?.Close();
+            if (port != null && port.IsOpen)
+            {
+                port.WriteLine(data);
+            }
         }
 
-        public void Write(string data)
+        public void SendData(SerialPort port, byte[] data)
         {
-            _serialPort?.Write(data);
+            if (port != null && port.IsOpen)
+            {
+                port.Write(data, 0, data.Length);
+            }
+        }
+
+        protected virtual void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            DataReceived?.Invoke(sender, e);
         }
     }
 }
