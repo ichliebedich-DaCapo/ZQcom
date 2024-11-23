@@ -12,13 +12,21 @@ using GalaSoft.MvvmLight.Command;
 using System.Text.RegularExpressions;
 using System.Text;
 using ZQcom.Events;
+using System.IO;
 
 namespace ZQcom.ViewModels
 {
     public class SerialPortViewModel : ViewModelBase
     {
+        // 内部普通变量
         private readonly SerialPortService _serialPortService;      // 串口服务对象
         private SerialPort? _serialPort;                            // 当前打开的串口实例
+        //private List<string> _logCache;                             // 日志缓存
+        //private FileStream ?_fileStream;                             // 日志文件流
+        //private StreamWriter _writer;                               // 日志文件写入对象
+        //private long _cacheSizeLimit;                               // 日志缓存大小
+        //private string ?_logFilePath;                                // 日志文件路径
+        // 数据绑定属性
         private string _openCloseButtonText = "打开串口";           // 打开/关闭串口按钮的文本
         private string _sendDataText = "01040000000271CB";          // 发送的数据
         private string _logText = "";                               // 日志文本
@@ -39,6 +47,8 @@ namespace ZQcom.ViewModels
         private bool _isProcessData;                                // 是否处理数据
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
+        //private bool _isLogSave=false;                              // 是否保存日志
+
 
         public event EventHandler<string>? DataReceived;            // 数据接收事件
         public ObservableCollection<string>? AvailablePorts { get; set; } // 可用的串口列表
@@ -58,6 +68,9 @@ namespace ZQcom.ViewModels
             ParityOptions = [Parity.None, Parity.Odd, Parity.Even, Parity.Mark, Parity.Space];
             StopBitOptions = [StopBits.None, StopBits.One, StopBits.Two, StopBits.OnePointFive];
             DataBitOptions = [5, 6, 7, 8];
+
+            //_cacheSizeLimit = 10 * 1024 * 1024; // 默认10 MB
+            //InitializeLogFile();
 
             // 刷新串口列表
             PopulateSerialPortNames();
@@ -303,11 +316,25 @@ namespace ZQcom.ViewModels
         }
 
 
+        //// 是否保存日志
+        //public bool IsLogSave
+        //{
+        //    get => _isLogSave;
+        //    set
+        //    {
+        //        _isLogSave = value;
+        //        RaisePropertyChanged(nameof(IsLogSave));
+        //    }
+        //}
+
+
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
         public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
         public ICommand SendDataCommand => new RelayCommand(SendData);
         public ICommand ToggleTimedSendCommand => new RelayCommand(ToggleTimedSend);
+
+        public ICommand SaveLogCommand => new RelayCommand(SaveLog);
 
 
         // 刷新串口列表
@@ -450,9 +477,6 @@ namespace ZQcom.ViewModels
             // 输出到对应框中
             LogMessage($">> {data}");
             ProcessData(data);// 处理数据
-
-            // 滚动到最底部
-            ScrollToBottom();
         }
 
 
@@ -594,12 +618,43 @@ namespace ZQcom.ViewModels
             }
         }
 
-        private void ScrollToBottom()
-        {
-            // 这里假设 TbxLog 和 TbxReceiveData 是在 View 中定义的控件
-            // 实际滚动操作应该在 View 中实现
-        }
 
+        // 初始化日志文件
+        //private void InitializeLogFile()
+        //{
+        //    _logFilePath = GenerateLogFileName();
+        //    _fileStream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
+        //    _writer = new StreamWriter(_fileStream) { AutoFlush = true };
+        //}
+        // 生成日志文件名
+        private string GenerateLogFileName()
+        {
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            return $"Log/log_{timestamp}.txt";
+        }
+        // 确保目录存在
+        private void EnsureDirectoryExists(string directoryPath)
+        {
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+        }
+        // 保存日志
+        private void SaveLog()
+        {
+            try
+            {
+                string logFilePath = GenerateLogFileName();
+                EnsureDirectoryExists(Path.GetDirectoryName(logFilePath));
+                File.WriteAllText(logFilePath, LogText);
+            }
+            catch (Exception ex)
+            {
+                // 处理异常，例如显示错误消息
+                MessageBox.Show($"保存日志失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
 
         //// 用于测试图表性能
@@ -642,26 +697,26 @@ namespace ZQcom.ViewModels
 
         // ---------------------------------------------------------------------
         // ---------------------------------------------------------------------
+        // 忘记这是干什么的了，先注释保留
+        //private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        //{
+        //    for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        //    {
+        //        var child = VisualTreeHelper.GetChild(parent, i);
+        //        if (child is T t)
+        //        {
+        //            return t;
+        //        }
 
-        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T t)
-                {
-                    return t;
-                }
+        //        var childOfChild = FindVisualChild<T>(child);
+        //        if (childOfChild != null)
+        //        {
+        //            return childOfChild;
+        //        }
+        //    }
 
-                var childOfChild = FindVisualChild<T>(child);
-                if (childOfChild != null)
-                {
-                    return childOfChild;
-                }
-            }
-
-            return null;
-        }
+        //    return null;
+        //}
 
         //private void OnDataReceived(string data)
         //{
