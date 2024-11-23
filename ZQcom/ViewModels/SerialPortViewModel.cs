@@ -602,15 +602,6 @@ namespace ZQcom.ViewModels
 
 
 
-        public ICommand DebugCommand => new RelayCommand(Debug);
-        public int debugCount = 0;
-        public void Debug()
-        {
-            //debugCount++;
-            ProcessData("4247EFCF");
-            MessageBox.Show($"Debug");
-        }
-
 
         // ---------------------------------------------------------------------
         // ---------------------------------------------------------------------

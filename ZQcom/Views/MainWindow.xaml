@@ -84,12 +84,13 @@
                      DisableAnimations="{Binding ChartViewModel.DisableAnimation}"
                      Visibility="{Binding ChartViewModel.ChartVisibility}">
                     <lvc:CartesianChart.AxisX>
-                        <lvc:Axis MinValue="1" MaxValue="{Binding ChartViewModel.AxisXMaxValue}"
-                        LabelFormatter="{Binding ChartViewModel.XAxisLabelFormatter}" />
+                        <!--暂时先屈服(X_X),这个X轴刻度太难搞了，从零开始就从零开始吧-->
+                        <lvc:Axis MinValue="0" MaxValue="{Binding ChartViewModel.AxisXMaxValue}"/>
+                        <!--这种方法暂时不可行LabelFormatter="{Binding ChartViewModel.ChartModel.XAxisLabelFormatter.LabelFormatter}"-->
                     </lvc:CartesianChart.AxisX>
-                    <lvc:CartesianChart.AxisY>
+                    <!--<lvc:CartesianChart.AxisY>
                         <lvc:Axis LabelFormatter="{Binding ChartViewModel.ChartModel.YFormatter}" />
-                    </lvc:CartesianChart.AxisY>
+                    </lvc:CartesianChart.AxisY>-->
                 </lvc:CartesianChart>
             </Grid>
         </DockPanel>

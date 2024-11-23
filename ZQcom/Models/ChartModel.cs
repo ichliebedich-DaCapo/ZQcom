@@ -6,20 +6,29 @@ namespace ZQcom.Models
 {
     public class ChartModel
     {
+        // -----------------------------数据绑定------------------------------
         public SeriesCollection Series { get; set; }
         //public string[] Labels { get; set; }
-        public Func<double, string> YFormatter { get; set; }
+        //public Func<double, string> YFormatter { get; set; }
+        //public Axis XAxisLabelFormatter { get; set; } // 新增 X 轴属性
+
 
         public ChartModel()
         {
             Series = new SeriesCollection();
             //Labels = new string[0];
-            YFormatter = value => value.ToString("N");
-
+            //YFormatter = value => value.ToString("N");
+            //// 设置 X 轴的 LabelFormatter
+            //XAxisLabelFormatter = new Axis
+            //{
+            //    LabelFormatter = value => (value + 1).ToString() // 这里 +1 就是让显示的索引从 1 开始
+            //};
             // 初始化第一个系列
             AddSeries("Data");
         }
 
+
+        // -----------------------------对外方法(接口)------------------------------
         // 添加序列
         public void AddSeries(string title)
         {

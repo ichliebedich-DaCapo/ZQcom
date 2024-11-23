@@ -110,7 +110,8 @@ namespace ZQcom.ViewModels
         {
             if (IsEnableChart)
             {
-                if (ChartModel.GetDataPointCount() >= MaxDisplayPoints)
+                // 由于起始索引为0，索引没有用">="
+                if (ChartModel.GetDataPointCount() > MaxDisplayPoints)
                     RemoveLastDataPoint();// 删除最后一条数据
                 ChartModel.AddDataPoint(value);
             }
