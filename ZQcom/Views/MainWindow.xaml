@@ -60,7 +60,9 @@
                     <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="100" Margin="0,0,10,0" />
                     <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
                     <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="100" Margin="0,0,10,0" />
+                    <!--简陋就简陋吧，凑合着-->
                     <Button Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="200,0,0,0" />
+                    <Button Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
                     <!--别问，问就是没做好-->
                     <!--<CheckBox Content="日志实时保存" IsChecked="{Binding SerialPortViewModel.IsLogSave}" Margin="0,0,10,0" Height="14" />-->
                 </StackPanel>

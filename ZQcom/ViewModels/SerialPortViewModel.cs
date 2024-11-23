@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using System.Text;
 using ZQcom.Events;
 using System.IO;
+using System.Diagnostics;
 
 namespace ZQcom.ViewModels
 {
@@ -336,6 +337,8 @@ namespace ZQcom.ViewModels
 
         public ICommand SaveLogCommand => new RelayCommand(SaveLog);
 
+        public ICommand OpenLogDirectoryCommand => new RelayCommand(OpenLogDirectory);
+
 
         // 刷新串口列表
         private void PopulateSerialPortNames()
@@ -559,7 +562,8 @@ namespace ZQcom.ViewModels
 
 
                     // 检查数据长度
-                    if (startIndex + length > hexDataWithoutSpaces.Length)
+                    // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
+                    if (startIndex + length > hexDataWithoutSpaces.Length &&length!=-1)
                     {
                         MessageBox.Show("数据长度不足，无法处理！");
                         IsProcessData = false; // 关闭处理数据
@@ -567,7 +571,10 @@ namespace ZQcom.ViewModels
                     }
 
                     // 截取数据,并发送
-                    processedData = hexDataWithoutSpaces.Substring(startIndex, length);
+                    if(length!=-1)
+                       { processedData = hexDataWithoutSpaces.Substring(startIndex, length); }
+                    else 
+                        { processedData = hexDataWithoutSpaces; }
                     ExtractedDataMessage(processedData);
 
                     // 由于前面已经经过是否显示16进制处理过了，这个判断倒显得怪异
@@ -647,7 +654,15 @@ namespace ZQcom.ViewModels
             {
                 string logFilePath = GenerateLogFileName();
                 EnsureDirectoryExists(Path.GetDirectoryName(logFilePath));
+                // 保存日志框
                 File.WriteAllText(logFilePath, LogText);
+                // 保存处理数据框
+                if(IsProcessData)
+                {
+                    File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText);
+                    File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText);
+                }
+                MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -656,7 +671,12 @@ namespace ZQcom.ViewModels
             }
         }
 
-
+        // 打开日志文件夹
+        public void OpenLogDirectory()
+        {
+            string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Log");
+            Process.Start(new ProcessStartInfo("explorer.exe", logDirectory));
+        }
         //// 用于测试图表性能
         //public ICommand DebugCommand => new RelayCommand(Debug);
 
