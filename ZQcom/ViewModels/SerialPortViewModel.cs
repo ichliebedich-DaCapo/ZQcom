@@ -564,19 +564,26 @@ namespace ZQcom.ViewModels
 
                     // 检查数据长度
                     // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
-                    if (startIndex + length > hexDataWithoutSpaces.Length &&length!=-1)
+                    if(length==-1)
                     {
-                        MessageBox.Show("数据长度不足，无法处理！");
-                        IsProcessData = false; // 关闭处理数据
-                        return;
+                        processedData = hexDataWithoutSpaces; 
                     }
-
-                    // 截取数据,并发送
-                    if(length!=-1)
-                       { processedData = hexDataWithoutSpaces.Substring(startIndex, length); }
-                    else 
-                        { processedData = hexDataWithoutSpaces; }
+                    else
+                    {
+                        if (startIndex + length > hexDataWithoutSpaces.Length)
+                        {
+                            MessageBox.Show("数据长度不足，无法处理！");
+                            IsProcessData = false; // 关闭处理数据
+                            return;
+                        }
+                        // 截取数据,并发送
+                        processedData = hexDataWithoutSpaces.Substring(startIndex, length);
+                    }
                     ExtractedDataMessage(processedData);
+
+
+
+
 
                     // 由于前面已经经过是否显示16进制处理过了，这个判断倒显得怪异
                     if (IsHexDisplay)
