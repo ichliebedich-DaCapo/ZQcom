@@ -64,19 +64,30 @@
         </DockPanel>
 
 
-        <!-- Chart View -->
-        <StackPanel Grid.Column="1" Margin="10">
-            <TextBox Text="Enter point count" Margin="0,10,0,0"/>
-            
-            <lvc:CartesianChart Series="{Binding ChartViewModel.ChartModel.Series}" Height="379">
-                <lvc:CartesianChart.AxisX>
-                    <lvc:Axis Labels="{Binding ChartViewModel.ChartModel.Labels}"/>
-                </lvc:CartesianChart.AxisX>
-                <lvc:CartesianChart.AxisY>
-                    <lvc:Axis LabelFormatter="{Binding ChartViewModel.ChartModel.YFormatter}"/>
-                </lvc:CartesianChart.AxisY>
-            </lvc:CartesianChart>
-            
-        </StackPanel>
+        <!-- 图表视图 -->
+        <DockPanel Grid.Column="1" LastChildFill="True" Margin="10">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                <CheckBox Content="开启图表" IsChecked="{Binding ChartViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
+                <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="10,0,10,0" />
+                <Button Content="测试按钮" Command="{Binding ChartViewModel.DebugCommand}" Width="80" Margin="10,0,0,0" />
+            </StackPanel>
+
+            <Grid DockPanel.Dock="Top" Margin="0,5,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!--图表显示区域-->
+                <lvc:CartesianChart Series="{Binding ChartViewModel.ChartModel.Series}">
+                    <lvc:CartesianChart.AxisX>
+                        <lvc:Axis Labels="{Binding ChartViewModel.ChartModel.Labels}"/>
+                    </lvc:CartesianChart.AxisX>
+                    <lvc:CartesianChart.AxisY>
+                        <lvc:Axis LabelFormatter="{Binding ChartViewModel.ChartModel.YFormatter}"/>
+                    </lvc:CartesianChart.AxisY>
+                </lvc:CartesianChart>
+            </Grid>
+        </DockPanel>
     </Grid>
 </Window>

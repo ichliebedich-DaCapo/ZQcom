@@ -23,7 +23,7 @@ namespace ZQcom.ViewModels
 
         private void OnDataReceived(object sender, string data)
         {
-            _chartViewModel.AddDataPoint(double.Parse(data));
+            //_chartViewModel.AddDataPoint(double.Parse(data));
         }
     }
 }
