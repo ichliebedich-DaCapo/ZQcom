@@ -7,4 +7,5 @@ using System.Threading.Tasks;
 namespace ZQcom.Events
 {
     public class DataReceivedEvent : PubSubEvent<double> { }
+    //public class ClearChartEvent:PubSubEvent<> { }
 }

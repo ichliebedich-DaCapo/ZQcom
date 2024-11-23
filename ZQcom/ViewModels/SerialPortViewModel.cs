@@ -338,6 +338,7 @@ namespace ZQcom.ViewModels
         public ICommand SaveLogCommand => new RelayCommand(SaveLog);
 
         public ICommand OpenLogDirectoryCommand => new RelayCommand(OpenLogDirectory);
+        public ICommand ClearTextCommand => new RelayCommand(ClearText);
 
 
         // 刷新串口列表
@@ -677,6 +678,29 @@ namespace ZQcom.ViewModels
             string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Log");
             Process.Start(new ProcessStartInfo("explorer.exe", logDirectory));
         }
+
+
+        public void ClearText()
+        {
+            // 弹出确认对话框
+            var result = MessageBox.Show("确定要清屏吗？", "确认", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result == MessageBoxResult.Yes)
+            {
+                // 清除文本框内容
+                LogText = string.Empty;
+                ExtractedText = string.Empty;
+                ConvertedText = string.Empty;
+                MessageBox.Show("已成功清屏", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+
+
+
+
+
+
+
         //// 用于测试图表性能
         //public ICommand DebugCommand => new RelayCommand(Debug);
 
