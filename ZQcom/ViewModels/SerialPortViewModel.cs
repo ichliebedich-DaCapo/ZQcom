@@ -9,58 +9,55 @@ using ZQcom.Models;
 using ZQcom.Services;
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
+using System.Text.RegularExpressions;
+using System.Text;
 
 namespace ZQcom.ViewModels
 {
     public class SerialPortViewModel : ViewModelBase
     {
-        private readonly SerialPortService _serialPortService;
-        private SerialPort _serialPort;
-        private string _openCloseButtonText = "打开串口";
-        private string _sendDataText = "01040000000271CB";
-        private string _logText = "";
-        private string _receiveText = "";
-        private string _extractedText = "";
-        private string _convertedText = "";
-        private bool _isHexSend;
-        private bool _isHexDisplay;
-        private bool _addNewline;
-        private string _selectedSerialPort = string.Empty;
-        private int _selectedBaudRate = 9600;
-        private Parity _selectedParity = Parity.None;
-        private StopBits _selectedStopBits = StopBits.One;
-        private int _selectedDataBits = 8;
-        private bool _isTimedSendEnabled;
-        private int _timedSendInterval = 1000;
-        private CancellationTokenSource _cancellationTokenSource;
-        private bool _isProcessData;
-        private int _startPosition = 0;
-        private int _length = 0;
+        private readonly SerialPortService _serialPortService;      // 串口服务对象
+        private SerialPort? _serialPort;                            // 当前打开的串口实例
+        private string _openCloseButtonText = "打开串口";           // 打开/关闭串口按钮的文本
+        private string _sendDataText = "01040000000271CB";          // 发送的数据
+        private string _logText = "";                               // 日志文本
+        private string _receiveText = "";                           // 接收到的数据文本
+        private string _extractedText = "";                         // 提取的数据文本
+        private string _convertedText = "";                         // 转换后的数据文本
+        private bool _isHexSend;                                    // 是否以十六进制格式发送数据
+        private bool _isHexDisplay;                                 // 是否以十六进制格式显示数据
+        private bool _addNewline;                                   // 是否在每行数据末尾添加换行符
+        private string _selectedSerialPort = string.Empty;          // 选中的串口号
+        private int _selectedBaudRate = 9600;                       // 选中的波特率
+        private Parity _selectedParity = Parity.None;               // 选中的校验位
+        private StopBits _selectedStopBits = StopBits.One;          // 选中的停止位
+        private int _selectedDataBits = 8;                          // 选中的数据位
+        private bool _isTimedSendEnabled;                           // 是否启用定时发送
+        private int _timedSendInterval = 100;                       // 定时发送的时间间隔（毫秒）
+        private CancellationTokenSource? _cancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
+        private bool _isProcessData;                                // 是否处理数据
+        private int _startPosition = 0;                             // 数据处理的起始位置
+        private int _length = 0;                                    // 数据处理的长度
 
-        public event EventHandler<string> DataReceived;
-
-        public ObservableCollection<string> AvailablePorts { get; set; }
+        public event EventHandler<string>? DataReceived;            // 数据接收事件
+        public ObservableCollection<string>? AvailablePorts { get; set; } // 可用的串口列表
 
 
         // ------------------------初始化------------------------------
         public SerialPortViewModel()
         {
             _serialPortService = new SerialPortService();
-            SerialPortNames = new ObservableCollection<string>();
-            BaudRateOptions = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200 };
-            ParityOptions = new ObservableCollection<Parity> { Parity.None, Parity.Odd, Parity.Even, Parity.Mark, Parity.Space };
-            StopBitOptions = new ObservableCollection<StopBits> { StopBits.None, StopBits.One, StopBits.Two, StopBits.OnePointFive };
-            DataBitOptions = new ObservableCollection<int> { 5, 6, 7, 8 };
+            SerialPortNames = [];
+            BaudRateOptions = [9600, 19200, 38400, 57600, 115200];
+            ParityOptions = [Parity.None, Parity.Odd, Parity.Even, Parity.Mark, Parity.Space];
+            StopBitOptions = [StopBits.None, StopBits.One, StopBits.Two, StopBits.OnePointFive];
+            DataBitOptions = [5, 6, 7, 8];
 
+            // 刷新串口列表
             PopulateSerialPortNames();
 
+            // 绑定接收数据
             _serialPortService.DataReceived += OnDataReceived;
-
-
-            // 先留着
-            //_serialService = new SerialPortService();
-            //AvailablePorts = new ObservableCollection<string>(SerialPort.GetPortNames());
-            //OpenCommand = new RelayCommand(OpenSerialPort);
 
 
             // 用于滚动数据，可能还有用
@@ -344,7 +341,7 @@ namespace ZQcom.ViewModels
 
 
         // 发送数据
-        private async void SendData()
+        private void SendData()
         {
             if (_serialPort == null || !_serialPort.IsOpen)
             {
@@ -352,19 +349,31 @@ namespace ZQcom.ViewModels
                 return;
             }
 
+            // 获取要发送的数据,确保不改变原数据
             var data = SendDataText;
             if (!string.IsNullOrEmpty(data))
             {
                 if (IsHexSend)
                 {
-                    byte[] bytes = HexStringToByteArray(data);
-                    _serialPortService.SendData(_serialPort, bytes);
+                    // 检验是否为十六进制字符串
+                    if(IsHexString(data))
+                    {
+                        // 发送转为16进制字节数组的数据
+                        _serialPortService.SendData(_serialPort, Convert.FromHexString(data));
+                    }
+                    else
+                    {
+                        MessageBox.Show("请不要输入非法字符！");
+                        return;
+                    }
+                    // 格式化数据，确保以16进制发送时不会出错
+                    data = FormatHexString(data);
                 }
                 else
                 {
                     _serialPortService.SendData(_serialPort, data + (AddNewline ? "\r\n" : ""));
                 }
-                LogMessage($"发送: >> {data}");
+                LogMessage($"<< {data}");
             }
         }
 
@@ -383,20 +392,50 @@ namespace ZQcom.ViewModels
                 _isTimedSendEnabled = true;
                 RaisePropertyChanged(nameof(IsTimedSendEnabled));
 
-                while (!_cancellationTokenSource.Token.IsCancellationRequested)
+                try
                 {
-                    await Task.Delay(TimedSendInterval, _cancellationTokenSource.Token);
-                    SendData();
+                    while (true)
+                    {
+                        if (_cancellationTokenSource.Token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        await Task.Delay(TimedSendInterval, _cancellationTokenSource.Token);
+                        SendData();
+                    }
+                }
+                //catch (OperationCanceledException)
+                //{
+                //    // 当任务被取消时抛出的异常
+                //    Application.Current.Dispatcher.Invoke(() =>
+                //    {
+                //        MessageBox.Show("定时发送已取消", "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+                //    });
+                //}
+                catch (Exception ex)
+                {
+                    // 其他异常
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                }
+                finally
+                {
+                    _isTimedSendEnabled = false;
+                    RaisePropertyChanged(nameof(IsTimedSendEnabled));
                 }
             }
         }
 
         // 接收数据
-        private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
+        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             var sp = (SerialPort)sender;
             string data = sp.ReadExisting();
-            LogMessage($"接收: << {data}");
+            // 格式化数据并输出
+            LogMessage($">> {FormatData(data)}");
             ReceiveText += FormatData(data);
 
             if (IsProcessData && StartPosition >= 0 && Length > 0)
@@ -410,17 +449,16 @@ namespace ZQcom.ViewModels
 
 
 
-
-        // 十六进制字符串转字节数组
-        private byte[] HexStringToByteArray(string hex)
+        // 判断是否为有效的十六进制字符串
+        public bool IsHexString(string input)
         {
-            int NumberChars = hex.Length;
-            byte[] bytes = new byte[NumberChars / 2];
-            for (int i = 0; i < NumberChars; i += 2)
-                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
-            return bytes;
+            // 去除字符串中的所有空格
+            input = input.Replace(" ", "");
+
+            // 正则表达式匹配16进制字符
+            return Regex.IsMatch(input, "^[0-9A-Fa-f]+$");
         }
-        // 格式化数据
+        // 格式化数据（由于判断是否为16进制字符串）
         private string FormatData(string data)
         {
             if (IsHexDisplay)
@@ -428,6 +466,15 @@ namespace ZQcom.ViewModels
                 return BitConverter.ToString(System.Text.Encoding.UTF8.GetBytes(data)).Replace("-", " ");
             }
             return data;
+        }
+        // 格式化16进制字符串
+        public string FormatHexString(string hexString)
+        {
+            // 去除所有空格
+            hexString = hexString.Replace(" ", "");
+
+            // 将字符串按每两个字符分割，并用空格连接
+            return string.Join(" ", Enumerable.Range(0, hexString.Length / 2).Select(i => hexString.Substring(i * 2, 2)));
         }
 
 
@@ -452,37 +499,6 @@ namespace ZQcom.ViewModels
         // ---------------------------------------------------------------------
         // ---------------------------------------------------------------------
 
-
-
-
-        //public string LogText
-        //{
-        //    get => _logText;
-        //    set
-        //    {
-        //        _logText = value;
-        //        OnPropertyChanged(nameof(LogText));
-        //    }
-        //}
-
-        public ICommand OpenCommand { get; set; }
-
-
-
-        //private void OpenSerialPort(object parameter)
-        //{
-        //    var model = new SerialPortModel
-        //    {
-        //        PortName = SelectedPort,
-        //        BaudRate = 9600,
-        //        Parity = Parity.None,
-        //        DataBits = 8,
-        //        StopBits = StopBits.One
-        //    };
-
-        //    _serialService.OpenAsync(model).Wait();
-        //}
-
         private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
@@ -503,9 +519,9 @@ namespace ZQcom.ViewModels
             return null;
         }
 
-        private void OnDataReceived(string data)
-        {
-            DataReceived?.Invoke(this, data);
-        }
+        //private void OnDataReceived(string data)
+        //{
+        //    DataReceived?.Invoke(this, data);
+        //}
     }
 }

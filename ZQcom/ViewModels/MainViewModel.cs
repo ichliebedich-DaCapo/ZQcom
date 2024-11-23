@@ -5,7 +5,7 @@ using System.Windows.Controls;
 
 namespace ZQcom.ViewModels
 {
-    public class MainViewModel : BaseViewModel
+    public class MainViewModel
     {
         private SerialPortViewModel _serialPortViewModel;
         private ChartViewModel _chartViewModel;

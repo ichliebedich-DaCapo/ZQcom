@@ -1,10 +1,11 @@
-﻿using System;
+﻿using GalaSoft.MvvmLight;
+using System;
 using System.Collections.ObjectModel;
 using ZQcom.Models;
 
 namespace ZQcom.ViewModels
 {
-    public class ChartViewModel : BaseViewModel
+    public class ChartViewModel : ViewModelBase
     {
         private ChartModel _chartModel;
 
@@ -14,7 +15,7 @@ namespace ZQcom.ViewModels
             set
             {
                 _chartModel = value;
-                OnPropertyChanged(nameof(ChartModel));
+                //OnPropertyChanged(nameof(ChartModel));
             }
         }
 
