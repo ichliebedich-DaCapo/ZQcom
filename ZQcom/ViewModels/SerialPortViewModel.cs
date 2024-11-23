@@ -12,7 +12,7 @@ using GalaSoft.MvvmLight.Command;
 
 namespace ZQcom.ViewModels
 {
-    public class SerialPortViewModel : BaseViewModel
+    public class SerialPortViewModel : ViewModelBase
     {
         private readonly SerialPortService _serialPortService;
         private SerialPort _serialPort;
@@ -283,9 +283,62 @@ namespace ZQcom.ViewModels
 
 
         //public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
-        //public ICommand SendDataCommand => new RelayCommand(SendData);
+        public ICommand SendDataCommand => new RelayCommand(SendData);
         //public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
         //public ICommand ToggleTimedSendCommand => new RelayCommand(ToggleTimedSend);
+
+        private async void SendData()
+        {
+            if (_serialPort == null || !_serialPort.IsOpen)
+            {
+                MessageBox.Show("请先打开串口。");
+                return;
+            }
+
+            var data = SendDataText;
+            if (!string.IsNullOrEmpty(data))
+            {
+                if (IsHexSend)
+                {
+                    byte[] bytes = HexStringToByteArray(data);
+                    _serialPortService.SendData(_serialPort, bytes);
+                }
+                else
+                {
+                    _serialPortService.SendData(_serialPort, data + (AddNewline ? "\r\n" : ""));
+                }
+                LogMessage($"发送: >> {data}");
+            }
+        }
+        private byte[] HexStringToByteArray(string hex)
+        {
+            int NumberChars = hex.Length;
+            byte[] bytes = new byte[NumberChars / 2];
+            for (int i = 0; i < NumberChars; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+            return bytes;
+        }
+
+        private void LogMessage(string message)
+        {
+            LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+        }
+
+        private void ScrollToBottom()
+        {
+            // 这里假设 TbxLog 和 TbxReceiveData 是在 View 中定义的控件
+            // 实际滚动操作应该在 View 中实现
+        }
+
+
+
+
+
+
+
+
+
+
 
         //public string LogText
         //{
