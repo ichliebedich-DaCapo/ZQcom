@@ -4,6 +4,7 @@ using LiveCharts;
 using System;
 using System.Collections.ObjectModel;
 using System.IO.Ports;
+using System.Windows;
 using System.Windows.Input;
 using ZQcom.Models;
 
@@ -12,10 +13,21 @@ namespace ZQcom.ViewModels
     public class ChartViewModel : ViewModelBase
     {
         private ChartModel _chartModel;                             // 图表数据
-        private bool _isEnableChart=false;                          // 启用图表
-        private int _maxChartPoints=100;                            // 图表最大数据点数
+        private bool _isEnableChart = false;                          // 启用图表,默认不可视
+        private int _maxChartPoints = 100;                            // 图表最大数据点数
+        private bool _isDisableAnimation = false;                           // 禁用动画
 
 
+
+        // 初始化
+        public ChartViewModel()
+        {
+            _chartModel = new ChartModel();
+
+        }
+
+        // ------------------------数据绑定------------------------------
+        // 图表数据
         public ChartModel ChartModel
         {
             get => _chartModel;
@@ -25,17 +37,21 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 初始化
-        public ChartViewModel()
+        // 图表可视属性
+        public System.Windows.Visibility ChartVisibility
         {
-            _chartModel = new ChartModel();
-
-
-
-
+            get
+            {
+                if (IsEnableChart)
+                {
+                    return System.Windows.Visibility.Visible;
+                }
+                else
+                {
+                    return System.Windows.Visibility.Hidden;
+                }
+            }
         }
-
-        // ------------------------数据绑定------------------------------
         // 启用图表
         public bool IsEnableChart
         {
@@ -44,22 +60,63 @@ namespace ZQcom.ViewModels
             {
                 _isEnableChart = value;
                 RaisePropertyChanged(nameof(IsEnableChart));
+                RaisePropertyChanged(nameof(ChartVisibility));
             }
         }
 
+        // 图表最大数据点数属性
+        public int AxisXMaxValue
+        {
+            get => _maxChartPoints;
+        }
         // 图表最大数据点数
-        public int MaxChartPoints
+        public int MaxDisplayPoints
         {
             get => _maxChartPoints;
             set
             {
                 _maxChartPoints = value;
-                RaisePropertyChanged(nameof(MaxChartPoints));
+                RaisePropertyChanged(nameof(MaxDisplayPoints));
+                RaisePropertyChanged(nameof(AxisXMaxValue));
             }
         }
 
 
-
+        // 禁用动画属性
+        public bool DisableAnimation
+        {
+            get => _isDisableAnimation;
+        }
+        // 是否禁用动画
+        public bool IsDisableAnimation
+        {
+            get => _isDisableAnimation;
+            set
+            {
+                _isDisableAnimation = value;
+                RaisePropertyChanged(nameof(IsDisableAnimation));
+                RaisePropertyChanged(nameof(DisableAnimation));
+            }
+        }
+        // ------------------------私有方法------------------------------
+        // 添加数据点
+        public void AddDataPoint(double value)
+        {
+            if (IsEnableChart)
+            {
+                if (ChartModel.GetDataPointCount() >= MaxDisplayPoints)
+                    RemoveLastDataPoint();// 删除最后一条数据
+                ChartModel.AddDataPoint(value);
+            }
+        }
+        // 删除最后一条数据
+        public void RemoveLastDataPoint()
+        {
+            if(IsEnableChart)
+            {
+                ChartModel.RemoveDataPoint(0);
+            }
+        }
 
 
         // ------------------------绑定事件------------------------------
@@ -67,7 +124,7 @@ namespace ZQcom.ViewModels
 
         public void DebugAddPoints()
         {
-            ChartModel.AddDataPoint(DateTime.Now.Millisecond%100);
+            AddDataPoint(DateTime.Now.Millisecond % 100);
         }
     }
 }
