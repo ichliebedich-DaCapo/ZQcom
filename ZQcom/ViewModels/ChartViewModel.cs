@@ -105,6 +105,15 @@ namespace ZQcom.ViewModels
             }
         }
         // ------------------------私有方法------------------------------
+        private async Task AddDataPointsAsync(double value)
+        {
+            // 异步处理事件
+            await Task.Run(() =>
+            {
+                AddDataPoint(value);
+            });
+        }
+
         // 添加数据点
         public void AddDataPoint(double value)
         {
@@ -127,6 +136,19 @@ namespace ZQcom.ViewModels
 
 
         // ------------------------绑定事件------------------------------
+        public ICommand ClearChartCommand => new RelayCommand(ClearChart);
+
+
+
+
+        // 清除图表
+        public void ClearChart()
+        {
+            ChartModel.Clear();
+        }
+
+
+
         // // 用于调试
         //public ICommand DebugCommand => new RelayCommand(DebugAddPoints);
 

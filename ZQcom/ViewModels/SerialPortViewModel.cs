@@ -690,7 +690,7 @@ namespace ZQcom.ViewModels
                 LogText = string.Empty;
                 ExtractedText = string.Empty;
                 ConvertedText = string.Empty;
-                MessageBox.Show("已成功清屏", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                //MessageBox.Show("已成功清屏", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 

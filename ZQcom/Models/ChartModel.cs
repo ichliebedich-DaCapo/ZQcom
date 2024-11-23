@@ -117,5 +117,10 @@ namespace ZQcom.Models
         {
             return Series[series_index].Values.Count;
         }
+
+        public void Clear()
+        {
+            Series.Clear();
+        }
     }
 }
