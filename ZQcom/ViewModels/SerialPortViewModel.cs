@@ -602,6 +602,43 @@ namespace ZQcom.ViewModels
 
 
 
+        //// 用于测试图表性能
+        //public ICommand DebugCommand => new RelayCommand(Debug);
+
+        //public async void Debug()
+        //{
+        //        try
+        //        {
+        //        float floatValue = 0;
+        //        Random random = new Random();
+        //        _cancellationTokenSource = new CancellationTokenSource();
+        //        while (true)
+        //            {
+        //                if (_cancellationTokenSource.Token.IsCancellationRequested)
+        //                {
+        //                    break;
+        //                }
+        //                // 每10ms向图表传递一个数据
+        //                await Task.Delay(10, _cancellationTokenSource.Token);
+        //            _eventAggregator.GetEvent<DataReceivedEvent>().Publish(random.Next(100));
+        //        }
+        //        }
+        //        catch (OperationCanceledException)
+        //        {
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            // 其他异常
+        //            Application.Current.Dispatcher.Invoke(() =>
+        //            {
+        //                MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        //            });
+        //        }
+        //        finally
+        //        {
+        //        }
+        //}
+
 
         // ---------------------------------------------------------------------
         // ---------------------------------------------------------------------
