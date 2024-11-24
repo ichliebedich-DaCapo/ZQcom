@@ -697,7 +697,10 @@ namespace ZQcom.ViewModels
                 }
             }
         }
+        public async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
+        {
 
+        }
 
         // 初始化日志文件
         //private void InitializeLogFile()

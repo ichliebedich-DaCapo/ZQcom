@@ -1,7 +1,9 @@
 ﻿<Application x:Class="ZQcom.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="Views/MainWindow.xaml">
+             >
+    <!--这个本来是在上面的，但由于我在App.xaml.cs里已经创建窗口了，这里就不许需要了-->
+    <!--StartupUri="Views/MainWindow.xaml"-->
     <Application.Resources>
 
     </Application.Resources>

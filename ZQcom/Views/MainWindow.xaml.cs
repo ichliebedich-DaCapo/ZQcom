@@ -7,7 +7,7 @@ namespace ZQcom.Views
         public MainWindow()
         {
             InitializeComponent();
-            DataContext = new ViewModels.MainViewModel();
+            //DataContext = new ViewModels.MainViewModel();
         }
     }
 }
