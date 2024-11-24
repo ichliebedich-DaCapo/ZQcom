@@ -46,6 +46,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <TextBox Name="TbxLog" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" 
@@ -57,12 +58,19 @@
                     </i:Interaction.Behaviors>
                 </TextBox>
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                    <TextBlock Text="接收字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <TextBlock Text="{Binding SerialPortViewModel.ReceiveBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
+                    <TextBlock Text="发送字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <TextBlock Text="{Binding SerialPortViewModel.SendBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
+                    <TextBlock Text="接收数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <TextBlock Text="{Binding SerialPortViewModel.ReceiveNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
+                    <TextBlock Text="发送数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <TextBlock Text="{Binding SerialPortViewModel.SendNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
                     <CheckBox Content="处理数据" IsChecked="{Binding SerialPortViewModel.IsProcessData}" Margin="0,0,10,0" Height="14" />
                     <CheckBox Content="强制处理" IsChecked="{Binding SerialPortViewModel.IsForceProcess}" Margin="0,0,10,0" Height="14" />
                     <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                    <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="70" Margin="0,0,10,0" />
-                    <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
                     <CheckBox Content="禁用时间戳" IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" Margin="0,0,10,0" Height="14" />
                     <!--简陋就简陋吧，凑合着-->
                     <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="56" />
@@ -71,7 +79,7 @@
                     <!--别问，问就是没做好-->
                     <!--<CheckBox Content="日志实时保存" IsChecked="{Binding SerialPortViewModel.IsLogSave}" Margin="0,0,10,0" Height="14" />-->
                 </StackPanel>
-                <Grid Grid.Row="2" Margin="0,10,0,0">
+                <Grid Grid.Row="3" Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="27*" />
                         <ColumnDefinition Width="38*"/>
@@ -103,10 +111,10 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                 <CheckBox Content="开启图表" IsChecked="{Binding ChartViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
                 <CheckBox Content="禁用动画" IsChecked="{Binding ChartViewModel.IsDisableAnimation}" Margin="0,0,10,0" Height="14" />
-                <!--现在想做但还有些麻烦，如果使用缓存那么图像就不连续，如果不使用，那么速度就会非常慢，也许使用异步会好一些-->
-                <CheckBox Content="FFT(挖坑中)" IsChecked="{Binding ChartViewModel.IsEnableFFT}" Margin="0,0,10,0" Height="14" />
                 <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
                 <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="0,0,10,0" />
+                <!--现在想做实时FFT但还有些麻烦，如果使用缓存那么图像就不连续，如果不使用，那么开销就会很大，也许使用异步会好一些-->
+                <Button Content="FFT" Command="{Binding ChartViewModel.FFTCommand}" Width="80" Margin="10,0,0,0" />
                 <Button Content="清屏" Command="{Binding ChartViewModel.ClearChartCommand}" Width="80" Margin="10,0,0,0" />
                 <Button Content="测试按钮" Command="{Binding SerialPortViewModel.DebugCommand}" Width="80" Margin="10,0,0,0" />
             </StackPanel>
