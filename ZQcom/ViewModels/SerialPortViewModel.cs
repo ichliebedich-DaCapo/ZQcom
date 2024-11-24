@@ -14,6 +14,7 @@ using System.Text;
 using ZQcom.Events;
 using System.IO;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace ZQcom.ViewModels
 {
@@ -52,11 +53,15 @@ namespace ZQcom.ViewModels
         private bool _isDisableTimestamp=false;                     // 是否禁用时间戳
         private bool _isForceProcess = false;                       // 是否强制处理数据
 
-        public event EventHandler<string>? DataReceived;            // 数据接收事件
-        public ObservableCollection<string>? AvailablePorts { get; set; } // 可用的串口列表
+        // 线程相关
+        private readonly ConcurrentQueue<string> _dataQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
+        private CancellationTokenSource? _processingCancellationTokenSource;
+        private Task? _processingTask;
+
 
         // 事件
-        private readonly IEventAggregator _eventAggregator;
+        public event EventHandler<string>? DataReceived;            // 数据接收事件
+        private readonly IEventAggregator _eventAggregator;         // 事件发布者
 
 
 
@@ -64,6 +69,7 @@ namespace ZQcom.ViewModels
         // ------------------------初始化------------------------------
         public SerialPortViewModel(IEventAggregator eventAggregator)
         {
+            // --------------变量初始化--------------
             _serialPortService = new SerialPortService();
             SerialPortNames = [];
             BaudRateOptions = [9600, 19200, 38400, 57600, 115200];
@@ -74,6 +80,8 @@ namespace ZQcom.ViewModels
             //_cacheSizeLimit = 10 * 1024 * 1024; // 默认10 MB
             //InitializeLogFile();
 
+
+            //--------------前置准备--------------
             // 刷新串口列表
             PopulateSerialPortNames();
 
@@ -84,21 +92,15 @@ namespace ZQcom.ViewModels
             _eventAggregator = eventAggregator;
 
 
-            // 用于滚动数据，可能还有用
-            //_serialService.DataReceived += (s, e) =>
-            //{
-            //    LogText += e + Environment.NewLine;
-            //    Application.Current.Dispatcher.Invoke(() =>
-            //    {
-            //        // Scroll to bottom
-            //        var scrollViewer = FindVisualChild<ScrollViewer>(Application.Current.MainWindow);
-            //        scrollViewer.ScrollToBottom();
-            //    });
-            //};
+            // --------------线程相关--------------
+
+
         }
 
 
         // ------------------------数据绑定------------------------------
+        // 可用的串口列表
+        public ObservableCollection<string>? AvailablePorts { get; set; } 
         public ObservableCollection<string> SerialPortNames { get; set; }
         public string SelectedSerialPort
         {
@@ -388,8 +390,13 @@ namespace ZQcom.ViewModels
 
                 try
                 {
+                    // 打开串口逻辑
                     _serialPort = _serialPortService.OpenPort(SelectedSerialPort, baudRate, SelectedParity, SelectedStopBits, SelectedDataBits);
                     OpenCloseButtonText = "关闭串口";
+
+                    // 【生产者-消费者模式】启动数据处理任务
+                    _processingCancellationTokenSource = new CancellationTokenSource();
+                    _processingTask = Task.Run(async () => await ProcessDataQueueAsync(_processingCancellationTokenSource.Token), _processingCancellationTokenSource.Token);
                 }
                 catch (Exception ex)
                 {
@@ -398,9 +405,15 @@ namespace ZQcom.ViewModels
             }
             else
             {
+                // 关闭串口逻辑
                 _serialPortService.ClosePort(_serialPort);
                 _serialPort = null;
                 OpenCloseButtonText = "打开串口";
+
+                // 【生产者-消费者模式】停止数据处理任务
+                _processingCancellationTokenSource.Cancel();
+                _processingTask.Wait();
+
             }
         }
 
@@ -508,10 +521,16 @@ namespace ZQcom.ViewModels
             // 输出到对应框中
             LogMessage($">> {data}");
 
+            // 同步处理数据   但效率堪忧
             //ProcessData(data);// 处理数据
 
-            // 将处理数据的操作放在后台线程中执行，只不过我试了一下，发现会导致图表功能失常（没有任何反应），不知道什么原因
-            Task.Run(() => ProcessData(data));
+            //// 将处理数据的操作放在后台线程中执行，只不过我试了一下，发现会导致图表功能失常（没有任何反应），不知道什么原因
+            //Task.Run(() => ProcessData(data));
+
+            // 【生产者-消费者模式】
+            // 将数据添加到队列中
+            _dataQueue.Enqueue(data);
+
         }
 
 
@@ -697,9 +716,23 @@ namespace ZQcom.ViewModels
                 }
             }
         }
+
+        // 【生产者-消费者模式】启用异步处理数据
         public async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
         {
-
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (_dataQueue.TryDequeue(out string data))
+                {
+                    // 处理数据
+                    ProcessData(data);
+                }
+                else
+                {
+                    // 如果队列为空，稍作等待
+                    await Task.Delay(100, cancellationToken);
+                }
+            }
         }
 
         // 初始化日志文件
