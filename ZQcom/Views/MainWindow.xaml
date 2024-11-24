@@ -3,28 +3,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ZQcom.Views" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf" xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity" xmlns:behaviors="clr-namespace:ZQcom.Behaviors"
+        xmlns:local="clr-namespace:ZQcom.Views" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf" xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity" xmlns:behaviors="clr-namespace:ZQcom.Behaviors" xmlns:shell="http://schemas.microsoft.com/netfx/2009/xaml/presentation"
         mc:Ignorable="d"
-        Title="ZQcom" Height="1000" Width="1600"
-        WindowStartupLocation="CenterScreen">
+        Title="ZQcom" Height="1050" Width="1600"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        >
 
     <!--渐变深灰背景，更偏向于黑灰交替，有种黑胶质感-->
     <!--<Window.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-            --><!-- 较亮的深灰色 --><!--
+            -->
+    <!-- 较亮的深灰色 -->
+    <!--
             <GradientStop Color="#333333" Offset="0.0" />
-            --><!-- 更深的灰色 --><!--
+            -->
+    <!-- 更深的灰色 -->
+    <!--
             <GradientStop Color="#222222" Offset="1.0" />
         </LinearGradientBrush>
     </Window.Background>-->
-    
+
     <!--浅灰与深灰交替，有种咖啡色的感觉-->
     <!--<Window.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#444444" Offset="0.0" />
-            --><!-- 较亮的深灰色 --><!--
+            -->
+    <!-- 较亮的深灰色 -->
+    <!--
             <GradientStop Color="#333333" Offset="1.0" />
-            --><!-- 更深的灰色 --><!--
+            -->
+    <!-- 更深的灰色 -->
+    <!--
         </LinearGradientBrush>
     </Window.Background>-->
 
@@ -32,13 +42,19 @@
     <!--<Window.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#333333" Offset="0.0" />
-            --><!-- 较亮的深灰色 --><!--
+            -->
+    <!-- 较亮的深灰色 -->
+    <!--
             <GradientStop Color="#222222" Offset="1.0" />
-            --><!-- 更深的灰色 --><!--
+            -->
+    <!-- 更深的灰色 -->
+    <!--
             <GradientStop>
                 <GradientStop.Color>
                     <Color A="12" R="100" G="0" B="100" />
-                    --><!-- 紫色 --><!--
+                    -->
+    <!-- 紫色 -->
+    <!--
                 </GradientStop.Color>
                 <GradientStop.Offset>0.5</GradientStop.Offset>
             </GradientStop>
@@ -47,13 +63,22 @@
 
     <!--比较适合的亮紫色渐变背景-->
     <Window.Resources>
-        <!--线性渐变资源-->
+        <!--*********************背景颜色资源*********************-->
+        <!--标题栏资源-->
+        <LinearGradientBrush x:Key="BackgroundTitle" StartPoint="0,0" EndPoint="0,1">
+            <!--<GradientStop Color="#9B9DFE" Offset="0" />-->
+            <GradientStop Color="#6F8FE5" Offset="0.0" />
+            <GradientStop Color="#332A4A" Offset="1.6" />
+        </LinearGradientBrush>
+        <!--主题框架资源-->
         <LinearGradientBrush x:Key="BackgroundGradient" StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#9B9DFE" Offset="0" />
             <GradientStop Color="#332A4A" Offset="0.75" />
             <GradientStop Color="#0D0C22" Offset="0.95" />
         </LinearGradientBrush>
-        
+
+
+        <!--*********************组件通用样式*********************-->
         <!--按钮-->
         <Style TargetType="Button">
             <!--<Setter Property="Background" Value="#8F8FE5"/>-->
@@ -78,14 +103,13 @@
                             <!-- 圆角半径 -->
                             <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
-                                              Margin="{TemplateBinding Padding}"
-                                              />
+                                              Margin="{TemplateBinding Padding}"/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!--文本箱-->
         <Style TargetType="TextBox">
             <Setter Property="Background">
@@ -114,7 +138,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
         <!--Combox-->
         <Style TargetType="ComboBox">
             <Setter Property="Background">
@@ -184,8 +208,8 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
-        
+
+
         <!--复选框-->
         <Style TargetType="CheckBox">
             <Setter Property="Background">
@@ -200,144 +224,154 @@
             <!--垂直居中-->
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
     </Window.Resources>
 
 
+    <DockPanel LastChildFill="True">
 
-    <!--主题框架-->
-    <Grid  Background="{StaticResource BackgroundGradient}">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        
-        <!-- 左侧 -->
-        <DockPanel Grid.Column="0" LastChildFill="True" Margin="10">
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                <ComboBox Name="CmbSerialPorts" ItemsSource="{Binding SerialPortViewModel.SerialPortNames}" SelectedItem="{Binding SerialPortViewModel.SelectedSerialPort}" Width="80" Margin="0,0,10,0" />
-                <Button Content="刷新" Command="{Binding SerialPortViewModel.RefreshSerialPortsCommand}" Width="80" Margin="10,0,0,0" />
-                <Button Content="{Binding SerialPortViewModel.OpenCloseButtonText}" Command="{Binding SerialPortViewModel.ToggleSerialPortCommand}" Width="80" Margin="10,0,0,0" />
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                <TextBlock Text="波特率:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <ComboBox Name="CmbBaudRates" ItemsSource="{Binding SerialPortViewModel.BaudRateOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedBaudRate}" Width="80" />
-                <TextBlock Text="校验位:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbParity" ItemsSource="{Binding SerialPortViewModel.ParityOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedParity}" Width="80" />
-                <TextBlock Text="停止位:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbStopBits" ItemsSource="{Binding SerialPortViewModel.StopBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedStopBits}" Width="80" />
-                <TextBlock Text="数据位:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbDataBits" ItemsSource="{Binding SerialPortViewModel.DataBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedDataBits}" Width="80" />
-                <TextBlock Text="CRC校验(未完成):" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbCRC" ItemsSource="{Binding SerialPortViewModel.CRCOptions}" SelectedItem="{Binding SerialPortViewModel.CRC}" Width="80" />
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                <TextBox Name="TbxSendData" Text="{Binding SerialPortViewModel.SendDataText}" Width="200" Margin="0,0,10,0" />
-                <CheckBox Content="十六进制发送" IsChecked="{Binding SerialPortViewModel.IsHexSend}" Margin="0,0,10,0" />
-                <CheckBox Content="十六进制显示" IsChecked="{Binding SerialPortViewModel.IsHexDisplay}" Margin="0,0,10,0" />
-                <CheckBox Content="自动换行" IsChecked="{Binding SerialPortViewModel.AddNewline}" Margin="0,0,10,0" />
-                <Button Content="发送" Command="{Binding SerialPortViewModel.SendDataCommand}" Width="80" Margin="10,0,0,0" />
-                <Button Content="定时发送" Command="{Binding SerialPortViewModel.ToggleTimedSendCommand}" Width="80" Margin="10,0,0,0" />
-                <TextBox Name="TbxTimedSendInterval" Text="{Binding SerialPortViewModel.TimedSendInterval}" Width="60" Margin="10,0,10,0" />
-            </StackPanel>
-            <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBox Name="TbxLog" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" 
+        <!-- 自定义标题栏 -->
+        <DockPanel DockPanel.Dock="Top" Background="{StaticResource BackgroundTitle}" Height="30">
+            <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="0,0,5,0" />
+            <Button Content="最小化" Click="MinimizeButton_Click" Width="70" HorizontalAlignment="Right" Margin="1400,0,5,0" />
+            <Button Content="关闭" Click="CloseButton_Click" Width="70" HorizontalAlignment="Right" Margin="0,0,5,0" />
+        </DockPanel>
+
+        <!--主题框架-->
+        <Grid  Background="{StaticResource BackgroundGradient}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左侧 -->
+            <DockPanel Grid.Column="0" LastChildFill="True" Margin="10">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                    <ComboBox Name="CmbSerialPorts" ItemsSource="{Binding SerialPortViewModel.SerialPortNames}" SelectedItem="{Binding SerialPortViewModel.SelectedSerialPort}" Width="80" Margin="0,0,10,0" />
+                    <Button Content="刷新" Command="{Binding SerialPortViewModel.RefreshSerialPortsCommand}" Width="80" Margin="10,0,0,0" />
+                    <Button Content="{Binding SerialPortViewModel.OpenCloseButtonText}" Command="{Binding SerialPortViewModel.ToggleSerialPortCommand}" Width="80" Margin="10,0,0,0" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="波特率:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <ComboBox Name="CmbBaudRates" ItemsSource="{Binding SerialPortViewModel.BaudRateOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedBaudRate}" Width="80" />
+                    <TextBlock Text="校验位:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <ComboBox Name="CmbParity" ItemsSource="{Binding SerialPortViewModel.ParityOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedParity}" Width="80" />
+                    <TextBlock Text="停止位:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <ComboBox Name="CmbStopBits" ItemsSource="{Binding SerialPortViewModel.StopBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedStopBits}" Width="80" />
+                    <TextBlock Text="数据位:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <ComboBox Name="CmbDataBits" ItemsSource="{Binding SerialPortViewModel.DataBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedDataBits}" Width="80" />
+                    <TextBlock Text="CRC校验(未完成):" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <ComboBox Name="CmbCRC" ItemsSource="{Binding SerialPortViewModel.CRCOptions}" SelectedItem="{Binding SerialPortViewModel.CRC}" Width="80" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox Name="TbxSendData" Text="{Binding SerialPortViewModel.SendDataText}" Width="200" Margin="0,0,10,0" />
+                    <CheckBox Content="十六进制发送" IsChecked="{Binding SerialPortViewModel.IsHexSend}" Margin="0,0,10,0" />
+                    <CheckBox Content="十六进制显示" IsChecked="{Binding SerialPortViewModel.IsHexDisplay}" Margin="0,0,10,0" />
+                    <CheckBox Content="自动换行" IsChecked="{Binding SerialPortViewModel.AddNewline}" Margin="0,0,10,0" />
+                    <Button Content="发送" Command="{Binding SerialPortViewModel.SendDataCommand}" Width="80" Margin="10,0,0,0" />
+                    <Button Content="定时发送" Command="{Binding SerialPortViewModel.ToggleTimedSendCommand}" Width="80" Margin="10,0,0,0" />
+                    <TextBox Name="TbxTimedSendInterval" Text="{Binding SerialPortViewModel.TimedSendInterval}" Width="60" Margin="10,0,10,0" />
+                </StackPanel>
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBox Name="TbxLog" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" 
                          Text="{Binding SerialPortViewModel.LogText, Mode=OneWay}" Grid.Row="0" 
                          ScrollViewer.VerticalScrollBarVisibility="Auto">
-                    <i:Interaction.Behaviors>
-                        <!--自动滚动到底部-->
-                        <behaviors:ScrollToEndBehavior />
-                    </i:Interaction.Behaviors>
-                </TextBox>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
-                    <TextBlock Text="接收字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                    <TextBlock Text="{Binding SerialPortViewModel.ReceiveBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
-                    <TextBlock Text="发送字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                    <TextBlock Text="{Binding SerialPortViewModel.SendBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
-                    <TextBlock Text="接收数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                    <TextBlock Text="{Binding SerialPortViewModel.ReceiveNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
-                    <TextBlock Text="发送数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                    <TextBlock Text="{Binding SerialPortViewModel.SendNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
-                </StackPanel>
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                    <CheckBox Content="处理数据" IsChecked="{Binding SerialPortViewModel.IsProcessData}" Margin="0,0,10,0" Height="14" />
-                    <CheckBox Content="强制处理" IsChecked="{Binding SerialPortViewModel.IsForceProcess}" Margin="0,0,10,0" Height="14" />
-                    <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                    <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="70" Margin="0,0,10,0" />
-                    <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
-                    <CheckBox Content="禁用时间戳" IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" Margin="0,0,10,0" Height="14" />
-                    <!--简陋就简陋吧，凑合着-->
-                    <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="56" />
-                    <Button Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="10,0,0,0" />
-                    <Button Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
-                    <!--别问，问就是没做好-->
-                    <!--<CheckBox Content="日志实时保存" IsChecked="{Binding SerialPortViewModel.IsLogSave}" Margin="0,0,10,0" Height="14" />-->
-                </StackPanel>
-                <Grid Grid.Row="3" Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="27*" />
-                        <ColumnDefinition Width="38*"/>
-                        <ColumnDefinition Width="65*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBox Name="TbxExtractedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
+                        <i:Interaction.Behaviors>
+                            <!--自动滚动到底部-->
+                            <behaviors:ScrollToEndBehavior />
+                        </i:Interaction.Behaviors>
+                    </TextBox>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="接收字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                        <TextBlock Text="{Binding SerialPortViewModel.ReceiveBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
+                        <TextBlock Text="发送字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                        <TextBlock Text="{Binding SerialPortViewModel.SendBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
+                        <TextBlock Text="接收数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                        <TextBlock Text="{Binding SerialPortViewModel.ReceiveNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
+                        <TextBlock Text="发送数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                        <TextBlock Text="{Binding SerialPortViewModel.SendNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <CheckBox Content="处理数据" IsChecked="{Binding SerialPortViewModel.IsProcessData}" Margin="0,0,10,0" Height="14" />
+                        <CheckBox Content="强制处理" IsChecked="{Binding SerialPortViewModel.IsForceProcess}" Margin="0,0,10,0" Height="14" />
+                        <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                        <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="70" Margin="0,0,10,0" />
+                        <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
+                        <CheckBox Content="禁用时间戳" IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" Margin="0,0,10,0" Height="14" />
+                        <!--简陋就简陋吧，凑合着-->
+                        <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="56" />
+                        <Button Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="10,0,0,0" />
+                        <Button Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
+                        <!--别问，问就是没做好-->
+                        <!--<CheckBox Content="日志实时保存" IsChecked="{Binding SerialPortViewModel.IsLogSave}" Margin="0,0,10,0" Height="14" />-->
+                    </StackPanel>
+                    <Grid Grid.Row="3" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="27*" />
+                            <ColumnDefinition Width="38*"/>
+                            <ColumnDefinition Width="65*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Name="TbxExtractedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
                              Margin="0,0,10,0" Text="{Binding SerialPortViewModel.ExtractedText, Mode=OneWay}" 
                              Grid.Column="0" ScrollViewer.VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2" >
-                        <i:Interaction.Behaviors>
-                            <!--自动滚动到底部-->
-                            <behaviors:ScrollToEndBehavior />
-                        </i:Interaction.Behaviors>
-                    </TextBox>
-                    <TextBox Name="TbxConvertedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
+                            <i:Interaction.Behaviors>
+                                <!--自动滚动到底部-->
+                                <behaviors:ScrollToEndBehavior />
+                            </i:Interaction.Behaviors>
+                        </TextBox>
+                        <TextBox Name="TbxConvertedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
                              Margin="0,0,10,0" Text="{Binding SerialPortViewModel.ConvertedText, Mode=OneWay}" Grid.Column="2"
                              ScrollViewer.VerticalScrollBarVisibility="Auto" >
-                        <i:Interaction.Behaviors>
-                            <!--自动滚动到底部-->
-                            <behaviors:ScrollToEndBehavior />
-                        </i:Interaction.Behaviors>
-                    </TextBox>
+                            <i:Interaction.Behaviors>
+                                <!--自动滚动到底部-->
+                                <behaviors:ScrollToEndBehavior />
+                            </i:Interaction.Behaviors>
+                        </TextBox>
+                    </Grid>
                 </Grid>
-            </Grid>
-        </DockPanel>
+            </DockPanel>
 
 
-        <!-- 图表视图 -->
-        <DockPanel Grid.Column="1" LastChildFill="True" Margin="10">
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                <CheckBox Content="开启图表" IsChecked="{Binding ChartViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
-                <CheckBox Content="禁用动画" IsChecked="{Binding ChartViewModel.IsDisableAnimation}" Margin="0,0,10,0" Height="14" />
-                <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="0,0,10,0" />
-                <!--现在想做实时FFT但还有些麻烦，如果使用缓存那么图像就不连续，如果不使用，那么开销就会很大，也许使用异步会好一些-->
-                <Button Content="FFT" Command="{Binding ChartViewModel.FFTCommand}" Width="80" Margin="10,0,0,0" />
-                <Button Content="清屏" Command="{Binding ChartViewModel.ClearChartCommand}" Width="80" Margin="10,0,0,0" />
-                <Button Content="测试按钮" Command="{Binding SerialPortViewModel.DebugCommand}" Width="80" Margin="10,0,0,0" />
-            </StackPanel>
+            <!-- 图表视图 -->
+            <DockPanel Grid.Column="1" LastChildFill="True" Margin="10">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                    <CheckBox Content="开启图表" IsChecked="{Binding ChartViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
+                    <CheckBox Content="禁用动画" IsChecked="{Binding ChartViewModel.IsDisableAnimation}" Margin="0,0,10,0" Height="14" />
+                    <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="0,0,10,0" />
+                    <!--现在想做实时FFT但还有些麻烦，如果使用缓存那么图像就不连续，如果不使用，那么开销就会很大，也许使用异步会好一些-->
+                    <Button Content="FFT" Command="{Binding ChartViewModel.FFTCommand}" Width="80" Margin="10,0,0,0" />
+                    <Button Content="清屏" Command="{Binding ChartViewModel.ClearChartCommand}" Width="80" Margin="10,0,0,0" />
+                    <Button Content="测试按钮" Command="{Binding SerialPortViewModel.DebugCommand}" Width="80" Margin="10,0,0,0" />
+                </StackPanel>
 
-            <Grid DockPanel.Dock="Top" Margin="0,5,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+                <Grid DockPanel.Dock="Top" Margin="0,5,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                <!--图表显示区域-->
-                <lvc:CartesianChart Series="{Binding ChartViewModel.ChartModel.Series}" 
+                    <!--图表显示区域-->
+                    <lvc:CartesianChart Series="{Binding ChartViewModel.ChartModel.Series}" 
                      DisableAnimations="{Binding ChartViewModel.DisableAnimation}"
                      Visibility="{Binding ChartViewModel.ChartVisibility}">
-                    <lvc:CartesianChart.AxisX>
-                        <!--暂时先屈服(X_X),这个X轴刻度太难搞了，从零开始就从零开始吧-->
-                        <lvc:Axis MinValue="0" MaxValue="{Binding ChartViewModel.AxisXMaxValue}"/>
-                        <!--这种方法暂时不可行LabelFormatter="{Binding ChartViewModel.ChartModel.XAxisLabelFormatter.LabelFormatter}"-->
-                    </lvc:CartesianChart.AxisX>
-                    <!--<lvc:CartesianChart.AxisY>
+                        <lvc:CartesianChart.AxisX>
+                            <!--暂时先屈服(X_X),这个X轴刻度太难搞了，从零开始就从零开始吧-->
+                            <lvc:Axis MinValue="0" MaxValue="{Binding ChartViewModel.AxisXMaxValue}"/>
+                            <!--这种方法暂时不可行LabelFormatter="{Binding ChartViewModel.ChartModel.XAxisLabelFormatter.LabelFormatter}"-->
+                        </lvc:CartesianChart.AxisX>
+                        <!--<lvc:CartesianChart.AxisY>
                         <lvc:Axis LabelFormatter="{Binding ChartViewModel.ChartModel.YFormatter}" />
                     </lvc:CartesianChart.AxisY>-->
-                </lvc:CartesianChart>
-            </Grid>
-        </DockPanel>
-    </Grid>
+                    </lvc:CartesianChart>
+                </Grid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
 </Window>
