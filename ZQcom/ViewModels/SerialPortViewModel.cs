@@ -507,7 +507,11 @@ namespace ZQcom.ViewModels
             data = FormatData(data);
             // 输出到对应框中
             LogMessage($">> {data}");
-            ProcessData(data);// 处理数据
+
+            //ProcessData(data);// 处理数据
+
+            // 将处理数据的操作放在后台线程中执行，只不过我试了一下，发现会导致图表功能失常（没有任何反应），不知道什么原因
+            Task.Run(() => ProcessData(data));
         }
 
 
