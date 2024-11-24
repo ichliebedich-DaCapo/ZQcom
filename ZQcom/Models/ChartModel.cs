@@ -121,7 +121,10 @@ namespace ZQcom.Models
 
         public void Clear()
         {
-            Series.Clear();
+            foreach (var series in Series)
+            {
+                series.Values.Clear();
+            }
         }
     }
 }
