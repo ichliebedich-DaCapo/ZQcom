@@ -73,7 +73,7 @@ namespace ZQcom.ViewModels
         // 图表最大数据点数属性
         public int AxisXMaxValue
         {
-            get => _maxChartPoints;
+            get => _maxChartPoints-1;
         }
         // 图表最大数据点数
         public int MaxDisplayPoints
@@ -105,6 +105,7 @@ namespace ZQcom.ViewModels
             }
         }
         // ------------------------私有方法------------------------------
+        // 异步添加数据点,先放着
         private async Task AddDataPointsAsync(double value)
         {
             // 异步处理事件
@@ -120,7 +121,7 @@ namespace ZQcom.ViewModels
             if (IsEnableChart)
             {
                 // 由于起始索引为0，索引没有用">="
-                if (ChartModel.GetDataPointCount() > MaxDisplayPoints)
+                if (ChartModel.GetDataPointCount() > AxisXMaxValue)
                     RemoveLastDataPoint();// 删除最后一条数据
                 ChartModel.AddDataPoint(value);
             }
@@ -137,7 +138,7 @@ namespace ZQcom.ViewModels
 
         // ------------------------绑定事件------------------------------
         public ICommand ClearChartCommand => new RelayCommand(ClearChart);
-
+        public ICommand FFTCommand => new RelayCommand(FFTChart);
 
 
 
@@ -147,6 +148,12 @@ namespace ZQcom.ViewModels
             ChartModel.Clear();
         }
 
+        // FFT处理
+        public void FFTChart()
+        {
+            ChartModel.FFT();
+        }
+        
 
 
         // // 用于调试
