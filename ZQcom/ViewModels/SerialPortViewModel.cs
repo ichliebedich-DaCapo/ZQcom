@@ -49,7 +49,8 @@ namespace ZQcom.ViewModels
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
         //private bool _isLogSave=false;                              // 是否保存日志
-
+        private bool _isDisableTimestamp=false;                     // 是否禁用时间戳
+        private bool _isForceProcess = false;                       // 是否强制处理数据
 
         public event EventHandler<string>? DataReceived;            // 数据接收事件
         public ObservableCollection<string>? AvailablePorts { get; set; } // 可用的串口列表
@@ -329,6 +330,30 @@ namespace ZQcom.ViewModels
         //}
 
 
+        // 是否禁用时间戳
+        public bool IsDisableTimestamp
+        {
+            get => _isDisableTimestamp;
+            set
+            {
+                _isDisableTimestamp = value;
+                RaisePropertyChanged(nameof(IsDisableTimestamp));
+            }
+        }
+
+
+        // 是否强制处理数据
+        public bool IsForceProcess
+        {
+            get => _isForceProcess;
+            set
+            {
+                _isForceProcess = value;
+                RaisePropertyChanged(nameof(IsForceProcess));
+            }
+        }
+
+
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
         public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
@@ -494,7 +519,7 @@ namespace ZQcom.ViewModels
             // 正则表达式匹配16进制字符
             return Regex.IsMatch(input, "^[0-9A-Fa-f]+$");
         }
-        // 格式化数据（由于判断是否为16进制字符串）
+        // 格式化数据，当为16进制显示时，将数据转为16进制字符串，否则原样返回
         private string FormatData(string data)
         {
             if (IsHexDisplay)
@@ -506,8 +531,8 @@ namespace ZQcom.ViewModels
         // 格式化16进制字符串
         public string FormatHexString(string hexString)
         {
-            // 去除所有空格
-            hexString = hexString.Replace(" ", "");
+            // 去除所有空格，以16进制显示是不会有换行的
+            hexString = hexString.Replace(" ", ""); ;
 
             // 将字符串按每两个字符分割，并用空格连接
             return string.Join(" ", Enumerable.Range(0, hexString.Length / 2).Select(i => hexString.Substring(i * 2, 2)));
@@ -518,7 +543,14 @@ namespace ZQcom.ViewModels
         // 发送日志消息
         private void LogMessage(string message)
         {
-            LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+            if (IsDisableTimestamp)
+            {
+                LogText += $" {message}{Environment.NewLine}";
+            }
+            else
+            {
+                LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+            }
         }
         // 发送截取数据
         private void ExtractedDataMessage(string data)
@@ -545,9 +577,10 @@ namespace ZQcom.ViewModels
                     // 获取数据起始位置和长度
                     int startIndex = StartPosition - 1; // 起始位置从1开始
                     int length = Length;
+                    bool processState = false;
 
                     // 检查起始位置
-                    if (StartPosition <= 0)
+                    if (StartPosition <= 0 && length!=-1)
                     {
                         MessageBox.Show("起始位置不能小于等于0，请重新输入！");
                         IsProcessData = false; // 关闭处理数据
@@ -559,7 +592,7 @@ namespace ZQcom.ViewModels
                     // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
                     string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
                     // 最终转换的浮点数据
-                    float floatValue;
+                    float floatValue=0.0f;
 
 
                     // 检查数据长度
@@ -583,25 +616,41 @@ namespace ZQcom.ViewModels
 
 
 
-
-
-                    // 由于前面已经经过是否显示16进制处理过了，这个判断倒显得怪异
+                    // 由于前面已经经过是否显示16进制处理过了，所以此时一定是16进制字符串       
                     if (IsHexDisplay)
                     {
                         // 将16进制字符串转换为字节数组
                         byte[] bytes = Convert.FromHexString(processedData);
 
-                        // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
-                        if (BitConverter.IsLittleEndian)
+                        // 检查字节数组长度是否为4
+                        if (bytes.Length != 4)
                         {
-                            Array.Reverse(bytes);
+                            if (!IsForceProcess)
+                            {
+                                MessageBox.Show("十六进制字符串长度不正确，无法转换为32位浮点数！");
+                                IsProcessData = false; // 关闭处理数据
+                                return;
+                            }
+                            else
+                            {
+                                ConvertedDataMessage("长度不足");
+                            }
+                        }
+                        else
+                        {
+                            processState = true;// 标记转换成功
+
+                            // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
+                            if (BitConverter.IsLittleEndian)
+                            {
+                                Array.Reverse(bytes);
+                            }
+
+                            // 将字节数组转换为32位浮点数
+                            floatValue = BitConverter.ToSingle(bytes, 0);
+                            ConvertedDataMessage(floatValue.ToString());
                         }
 
-                        // 将字节数组转换为32位浮点数
-                        floatValue = BitConverter.ToSingle(bytes, 0);
-
-
-                        ConvertedDataMessage(floatValue.ToString());
                     }
                     else
                     {
@@ -610,16 +659,26 @@ namespace ZQcom.ViewModels
                         {
                             floatValue = result;
                             ConvertedDataMessage(result.ToString());
+                            processState = true;// 标记转换成功
                         }
                         else
                         {
-                            MessageBox.Show("无法将数据转换为浮点数！");
-                            IsProcessData = false; // 关闭处理数据
-                            return;
+                            if (!IsProcessData)
+                            {
+                                MessageBox.Show("无法将数据转换为浮点数！");
+                                IsProcessData = false; // 关闭处理数据
+                                return;
+                            }
+                            else
+                            {
+                                ConvertedDataMessage("无法转换");
+                            }
                         }
                     }
+
                     // 发布事件
-                    _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
+                    if(processState)
+                        _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
                 }
                 catch (FormatException ex)
                 {
@@ -683,7 +742,15 @@ namespace ZQcom.ViewModels
         public void OpenLogDirectory()
         {
             string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Log");
-            Process.Start(new ProcessStartInfo("explorer.exe", logDirectory));
+            EnsureDirectoryExists(Path.GetDirectoryName(logDirectory));
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", logDirectory));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开日志文件夹时发生错误: {ex.Message}");
+            }
         }
 
 
@@ -748,7 +815,7 @@ namespace ZQcom.ViewModels
 
         // ---------------------------------------------------------------------
         // ---------------------------------------------------------------------
-        // 忘记这是干什么的了，先注释保留
+        // 忘记这是干啥的了，先注释保留
         //private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
         //{
         //    for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)

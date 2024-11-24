@@ -7,6 +7,7 @@ namespace ZQcom.Models
     public class ChartModel
     {
         // -----------------------------数据绑定------------------------------
+        // 使用序列是因为后续我想要添加更多序列
         public SeriesCollection Series { get; set; }
         //public string[] Labels { get; set; }
         //public Func<double, string> YFormatter { get; set; }
