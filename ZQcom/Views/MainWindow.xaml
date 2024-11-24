@@ -23,13 +23,15 @@
             </StackPanel>
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                 <TextBlock Text="波特率:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <ComboBox Name="CmbBaudRates" ItemsSource="{Binding SerialPortViewModel.BaudRateOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedBaudRate}" Width="100" />
+                <ComboBox Name="CmbBaudRates" ItemsSource="{Binding SerialPortViewModel.BaudRateOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedBaudRate}" Width="80" />
                 <TextBlock Text="校验位:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbParity" ItemsSource="{Binding SerialPortViewModel.ParityOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedParity}" Width="100" />
+                <ComboBox Name="CmbParity" ItemsSource="{Binding SerialPortViewModel.ParityOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedParity}" Width="80" />
                 <TextBlock Text="停止位:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbStopBits" ItemsSource="{Binding SerialPortViewModel.StopBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedStopBits}" Width="100" />
+                <ComboBox Name="CmbStopBits" ItemsSource="{Binding SerialPortViewModel.StopBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedStopBits}" Width="80" />
                 <TextBlock Text="数据位:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                <ComboBox Name="CmbDataBits" ItemsSource="{Binding SerialPortViewModel.DataBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedDataBits}" Width="100" />
+                <ComboBox Name="CmbDataBits" ItemsSource="{Binding SerialPortViewModel.DataBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedDataBits}" Width="80" />
+                <TextBlock Text="CRC校验(未完成):" VerticalAlignment="Center" Margin="10,0,10,0" />
+                <ComboBox Name="CmbCRC" ItemsSource="{Binding SerialPortViewModel.CRCOptions}" SelectedItem="{Binding SerialPortViewModel.CRC}" Width="80" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                 <TextBox Name="TbxSendData" Text="{Binding SerialPortViewModel.SendDataText}" Width="200" Margin="0,0,10,0" />
@@ -101,6 +103,8 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                 <CheckBox Content="开启图表" IsChecked="{Binding ChartViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
                 <CheckBox Content="禁用动画" IsChecked="{Binding ChartViewModel.IsDisableAnimation}" Margin="0,0,10,0" Height="14" />
+                <!--现在想做但还有些麻烦，如果使用缓存那么图像就不连续，如果不使用，那么速度就会非常慢，也许使用异步会好一些-->
+                <CheckBox Content="FFT(挖坑中)" IsChecked="{Binding ChartViewModel.IsEnableFFT}" Margin="0,0,10,0" Height="14" />
                 <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
                 <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="0,0,10,0" />
                 <Button Content="清屏" Command="{Binding ChartViewModel.ClearChartCommand}" Width="80" Margin="10,0,0,0" />

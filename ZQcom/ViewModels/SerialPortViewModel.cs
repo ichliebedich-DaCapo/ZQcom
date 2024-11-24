@@ -436,7 +436,9 @@ namespace ZQcom.ViewModels
                 }
                 else
                 {
-                    _serialPortService.SendData(_serialPort, data + (AddNewline ? "\r\n" : ""));
+                    // 16进制的换行我还没做，原因很简单，我暂时没有遇到发送16进制还需要加上换行的需求
+                    data = data + (AddNewline ? "\r\n" : "");
+                    _serialPortService.SendData(_serialPort, data );
                 }
                 // 发送到日志框内
                 LogMessage($"<< {data}");
@@ -663,7 +665,7 @@ namespace ZQcom.ViewModels
                         }
                         else
                         {
-                            if (!IsProcessData)
+                            if (!IsForceProcess)
                             {
                                 MessageBox.Show("无法将数据转换为浮点数！");
                                 IsProcessData = false; // 关闭处理数据
