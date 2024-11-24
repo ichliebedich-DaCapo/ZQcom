@@ -52,6 +52,10 @@ namespace ZQcom.ViewModels
         //private bool _isLogSave=false;                              // 是否保存日志
         private bool _isDisableTimestamp=false;                     // 是否禁用时间戳
         private bool _isForceProcess = false;                       // 是否强制处理数据
+        private int _receiveBytes = 0;                             // 接收到的字节数
+        private int _sendBytes = 0;                                // 发送的字节数
+        private int _receiveNum = 0;                               // 接收到的数据包数量
+        private int _sendNum = 0;                                  // 发送的数据包数量
 
         // 线程相关
         private readonly ConcurrentQueue<string> _dataQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
@@ -355,6 +359,44 @@ namespace ZQcom.ViewModels
             }
         }
 
+        // 接收的字节数、数量，发送的字节数、数量
+        public int ReceiveBytes
+        {
+            get => _receiveBytes;
+            set
+            {
+                _receiveBytes = value;
+                RaisePropertyChanged(nameof(ReceiveBytes));
+            }
+        }
+        public int SendBytes
+        {
+            get => _sendBytes;
+            set
+            {
+                _sendBytes = value;
+                RaisePropertyChanged(nameof(SendBytes));
+            }
+        }
+        public int ReceiveNum
+        {
+            get => _receiveNum;
+            set
+            {
+                _receiveNum = value;
+                RaisePropertyChanged(nameof(ReceiveNum));
+            }
+        }
+        public int SendNum
+        {
+            get => _sendNum;
+            set
+            {
+                _sendNum = value;
+                RaisePropertyChanged(nameof(SendNum));
+            }
+        }
+
 
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
@@ -411,8 +453,15 @@ namespace ZQcom.ViewModels
                 OpenCloseButtonText = "打开串口";
 
                 // 【生产者-消费者模式】停止数据处理任务
-                _processingCancellationTokenSource.Cancel();
-                _processingTask.Wait();
+                if(_processingCancellationTokenSource != null&&_processingTask != null)
+               { 
+                    _processingCancellationTokenSource.Cancel();
+                    _processingTask.Wait();
+                }
+                else
+                {
+                    MessageBox.Show($"数据处理任何发生异常，丢失引用", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
 
             }
         }
@@ -437,7 +486,11 @@ namespace ZQcom.ViewModels
                     if (IsHexString(data))
                     {
                         // 发送转为16进制字节数组的数据
-                        _serialPortService.SendData(_serialPort, Convert.FromHexString(data));
+                        byte[] hexData = Convert.FromHexString(data);
+                        _serialPortService.SendData(_serialPort, hexData);
+
+                        // 进行字节统计
+                        SendBytes += hexData.Length;
                     }
                     else
                     {
@@ -452,7 +505,18 @@ namespace ZQcom.ViewModels
                     // 16进制的换行我还没做，原因很简单，我暂时没有遇到发送16进制还需要加上换行的需求
                     data = data + (AddNewline ? "\r\n" : "");
                     _serialPortService.SendData(_serialPort, data );
+
+                    // 进行字节统计
+                    // 将字符串转换为字节数据（假设使用ASCII编码，后续可能会添加多种编码方式）
+                    byte[] buffer = System.Text.Encoding.ASCII.GetBytes(data);
+                    //byte[] buffer = System.Text.Encoding.UTF8.GetBytes(data);
+                    SendBytes += buffer.Length;
+                    
                 }
+
+                // 进行数量统计
+                ++SendNum;
+
                 // 发送到日志框内
                 LogMessage($"<< {data}");
             }
@@ -515,7 +579,13 @@ namespace ZQcom.ViewModels
         private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             var sp = (SerialPort)sender;
+
+            // 进行统计
+            ReceiveBytes += sp.BytesToRead;
+            ++ReceiveNum;
+
             string data = sp.ReadExisting();
+
             // 格式化数据
             data = FormatData(data);
             // 输出到对应框中
@@ -806,6 +876,11 @@ namespace ZQcom.ViewModels
                 LogText = string.Empty;
                 ExtractedText = string.Empty;
                 ConvertedText = string.Empty;
+                // 清除接收发送数据统计
+                ReceiveBytes = 0;
+                SendBytes = 0;
+                ReceiveNum = 0;
+                SendNum = 0;
                 //MessageBox.Show("已成功清屏", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
