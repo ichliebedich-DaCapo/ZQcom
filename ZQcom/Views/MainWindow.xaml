@@ -71,6 +71,9 @@
                     <CheckBox Content="处理数据" IsChecked="{Binding SerialPortViewModel.IsProcessData}" Margin="0,0,10,0" Height="14" />
                     <CheckBox Content="强制处理" IsChecked="{Binding SerialPortViewModel.IsForceProcess}" Margin="0,0,10,0" Height="14" />
                     <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                    <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="70" Margin="0,0,10,0" />
+                    <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
                     <CheckBox Content="禁用时间戳" IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" Margin="0,0,10,0" Height="14" />
                     <!--简陋就简陋吧，凑合着-->
                     <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="56" />
