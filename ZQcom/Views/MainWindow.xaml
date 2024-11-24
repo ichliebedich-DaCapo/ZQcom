@@ -3,17 +3,62 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ZQcom.Views" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf" 
-        xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
-        xmlns:behaviors="clr-namespace:ZQcom.Behaviors"
+        xmlns:local="clr-namespace:ZQcom.Views" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf" xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity" xmlns:behaviors="clr-namespace:ZQcom.Behaviors"
         mc:Ignorable="d"
-        Title="ZQcom" Height="1000" Width="1600">
-    <Grid>
+        Title="ZQcom" Height="1000" Width="1600"
+        WindowStartupLocation="CenterScreen">
+
+    <!--渐变深灰背景，更偏向于黑灰交替，有种黑胶质感-->
+    <!--<Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            --><!-- 较亮的深灰色 --><!--
+            <GradientStop Color="#333333" Offset="0.0" />
+            --><!-- 更深的灰色 --><!--
+            <GradientStop Color="#222222" Offset="1.0" />
+        </LinearGradientBrush>
+    </Window.Background>-->
+    
+    <!--浅灰与深灰交替，有种咖啡色的感觉-->
+    <!--<Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#444444" Offset="0.0" />
+            --><!-- 较亮的深灰色 --><!--
+            <GradientStop Color="#333333" Offset="1.0" />
+            --><!-- 更深的灰色 --><!--
+        </LinearGradientBrush>
+    </Window.Background>-->
+
+    <!--交织在一起的渐变背景，如果配色能调好的话也是不错的选择-->
+    <!--<Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#333333" Offset="0.0" />
+            --><!-- 较亮的深灰色 --><!--
+            <GradientStop Color="#222222" Offset="1.0" />
+            --><!-- 更深的灰色 --><!--
+            <GradientStop>
+                <GradientStop.Color>
+                    <Color A="12" R="100" G="0" B="100" />
+                    --><!-- 紫色 --><!--
+                </GradientStop.Color>
+                <GradientStop.Offset>0.5</GradientStop.Offset>
+            </GradientStop>
+        </LinearGradientBrush>
+    </Window.Background>-->
+
+    <Window.Resources>
+        <LinearGradientBrush x:Key="BackgroundGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#9B9DFE" Offset="0" />
+            <GradientStop Color="#0D0C22" Offset="1" />
+        </LinearGradientBrush>
+    </Window.Resources>
+
+    <!--主题框架-->
+    <Grid  Background="{StaticResource BackgroundGradient}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-
+        
         <!-- 左侧 -->
         <DockPanel Grid.Column="0" LastChildFill="True" Margin="10">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
