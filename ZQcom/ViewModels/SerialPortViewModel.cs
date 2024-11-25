@@ -18,6 +18,11 @@ using System.Collections.Concurrent;
 using ZQcom.Helpers;
 using System.Windows.Threading;
 
+/// 编程守则：
+/// ①UI更新：一定使用UI异步更新，不然会严重阻塞主线程
+
+
+
 namespace ZQcom.ViewModels
 {
     public class SerialPortViewModel : ViewModelBase
@@ -540,8 +545,12 @@ namespace ZQcom.ViewModels
                         byte[] hexData = Convert.FromHexString(data);
                         _serialPortService.SendData(_serialPort, hexData);
 
-                        // 进行字节统计
-                        SendBytes += hexData.Length;
+                        // 【UI更新】进行字节统计
+                        Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            SendBytes += hexData.Length;
+                        });
+                       
                     }
                     else
                     {
@@ -557,21 +566,63 @@ namespace ZQcom.ViewModels
                     data = data + (AddNewline ? "\r\n" : "");
                     _serialPortService.SendData(_serialPort, data );
 
-                    // 进行字节统计
+                    // 【UI更新】进行字节统计
                     // 将字符串转换为字节数据（假设使用ASCII编码，后续可能会添加多种编码方式）
                     byte[] buffer = System.Text.Encoding.ASCII.GetBytes(data);
                     //byte[] buffer = System.Text.Encoding.UTF8.GetBytes(data);
-                    SendBytes += buffer.Length;
+                    Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        SendBytes += buffer.Length;
+                    });
+                    
                     
                 }
 
-                // 进行数量统计
-                ++SendNum;
+                // 【UI更新】进行数量统计
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ++SendNum;
+                });
+                
 
                 // 发送到日志框内
                 LogMessage($"<< {data}");
             }
         }
+
+        // 接收数据
+        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            var sp = (SerialPort)sender;
+            // 暂时不能放进异步UI线程，否则会出问题
+            ReceiveBytes += sp.BytesToRead;
+
+            // 【UI更新】进行统计
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ++ReceiveNum;
+            });
+
+
+            string data = sp.ReadExisting();
+
+            // 格式化数据
+            data = FormatData(data);
+            // 输出到对应框中
+            LogMessage($">> {data}");
+
+            // 同步处理数据   但效率堪忧
+            //ProcessData(data);// 处理数据
+
+            //// 将处理数据的操作放在后台线程中执行，只不过我试了一下，发现会导致图表功能失常（没有任何反应），不知道什么原因
+            //Task.Run(() => ProcessData(data));
+
+            // 【生产者-消费者模式】
+            // 将数据添加到队列中
+            _dataQueue.Enqueue(data);
+
+        }
+
 
         // 启用/禁用定时发送
         private async void ToggleTimedSend()
@@ -626,33 +677,7 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 接收数据
-        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            var sp = (SerialPort)sender;
 
-            // 进行统计
-            ReceiveBytes += sp.BytesToRead;
-            ++ReceiveNum;
-
-            string data = sp.ReadExisting();
-
-            // 格式化数据
-            data = FormatData(data);
-            // 输出到对应框中
-            LogMessage($">> {data}");
-
-            // 同步处理数据   但效率堪忧
-            //ProcessData(data);// 处理数据
-
-            //// 将处理数据的操作放在后台线程中执行，只不过我试了一下，发现会导致图表功能失常（没有任何反应），不知道什么原因
-            //Task.Run(() => ProcessData(data));
-
-            // 【生产者-消费者模式】
-            // 将数据添加到队列中
-            _dataQueue.Enqueue(data);
-
-        }
 
 
 
@@ -689,6 +714,7 @@ namespace ZQcom.ViewModels
         // 发送日志消息
         private void LogMessage(string message)
         {
+            // 不知道为什么无法加入异步UI线程，加入后会很卡
             if (IsDisableTimestamp)
             {
                 LogText += $" {message}{Environment.NewLine}";
@@ -701,14 +727,14 @@ namespace ZQcom.ViewModels
         // 发送截取数据
         private void ExtractedDataMessage(string data)
         {
-
+            // 不知道为什么无法加入异步UI线程，加入后会很卡
             ExtractedText += $"{data}{Environment.NewLine}";
         }
         // 发送处理过的数据
         private void ConvertedDataMessage(string data)
         {
+            // 不知道为什么无法加入异步UI线程，加入后会很卡
             ConvertedText += $"{data}{Environment.NewLine}";
-
         }
 
         // 发送到处理数据框
