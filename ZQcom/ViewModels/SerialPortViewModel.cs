@@ -720,6 +720,7 @@ namespace ZQcom.ViewModels
                         // 检查字节数组长度是否为4
                         if (bytes.Length != 4)
                         {
+                            // 错误情况下的处理
                             if (!IsForceProcess)
                             {
                                 MessageBox.Show("十六进制字符串长度不正确，无法转换为32位浮点数！");
@@ -728,12 +729,14 @@ namespace ZQcom.ViewModels
                             }
                             else
                             {
+                                // 发送0表示无法转换
+                                floatValue = 0.0f;
                                 ConvertedDataMessage("长度不足");
                             }
                         }
                         else
                         {
-                            processState = true;// 标记转换成功
+       
 
                             // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
                             if (BitConverter.IsLittleEndian)
@@ -754,7 +757,6 @@ namespace ZQcom.ViewModels
                         {
                             floatValue = result;
                             ConvertedDataMessage(result.ToString());
-                            processState = true;// 标记转换成功
                         }
                         else
                         {
@@ -766,14 +768,15 @@ namespace ZQcom.ViewModels
                             }
                             else
                             {
+                                // 发送0表示无法转换
+                                floatValue = 0.0f;
                                 ConvertedDataMessage("无法转换");
                             }
                         }
                     }
 
                     // 发布事件
-                    if(processState)
-                        _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
+                    _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
                 }
                 catch (FormatException ex)
                 {
