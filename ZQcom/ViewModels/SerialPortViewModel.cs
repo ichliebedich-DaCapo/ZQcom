@@ -15,6 +15,7 @@ using ZQcom.Events;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using ZQcom.Helpers;
 
 namespace ZQcom.ViewModels
 {
@@ -419,7 +420,9 @@ namespace ZQcom.ViewModels
                 SerialPortNames.Add(port);
             }
         }
+
         // 启用/禁用串口
+        // 关闭串口时，也会同步关闭处理数据任务，
         private async void ToggleSerialPort()
         {
             if (_serialPort == null || !_serialPort.IsOpen)
@@ -457,6 +460,24 @@ namespace ZQcom.ViewModels
                 {
                     _processingCancellationTokenSource.Cancel();
 
+                    try
+                    {
+                        // 使用异步等待，防止阻塞主线程
+                        await _processingTask.WithTimeout(TimeSpan.FromSeconds(5)); // 设置超时时间为5秒
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 任务被取消
+                    }
+                    catch (TimeoutException)
+                    {
+                        // 超时处理
+                        MessageBox.Show("数据处理任务超时，强制关闭。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
                 else
                 {

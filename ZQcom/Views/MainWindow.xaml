@@ -147,14 +147,14 @@
                         <TextBlock Text="数据位:" VerticalAlignment="Center" Margin="10,0,10,0" />
                         <ComboBox Name="CmbDataBits" ItemsSource="{Binding SerialPortViewModel.DataBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedDataBits}" Width="80" />
                         <TextBlock Text="CRC校验(未完成):" VerticalAlignment="Center" Margin="10,0,10,0" />
-                        <ComboBox Name="CmbCRC" ItemsSource="{Binding SerialPortViewModel.CRCOptions}" SelectedItem="{Binding SerialPortViewModel.CRC}" Width="80" />
+                        <ComboBox Name="CmbCRC" ItemsSource="{Binding SerialPortViewModel.CRCOptions}" SelectedItem="{Binding SerialPortViewModel.CRC}" Width="68" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBox Name="TbxSendData" Text="{Binding SerialPortViewModel.SendDataText}" Width="200" Margin="0,0,10,0" />
-                        <CheckBox Content="十六进制发送" IsChecked="{Binding SerialPortViewModel.IsHexSend}" Margin="0,0,10,0" />
-                        <CheckBox Content="十六进制显示" IsChecked="{Binding SerialPortViewModel.IsHexDisplay}" Margin="0,0,10,0" />
-                        <CheckBox Content="自动换行" IsChecked="{Binding SerialPortViewModel.AddNewline}" Margin="0,0,10,0" />
-                        <Button Content="发送" Command="{Binding SerialPortViewModel.SendDataCommand}" Width="80" Margin="10,0,0,0" />
+                        <TextBox Name="TbxSendData" Text="{Binding SerialPortViewModel.SendDataText}" VerticalAlignment="Center" Width="200" Margin="0,0,10,0" />
+                        <CheckBox Content="十六进制发送" IsChecked="{Binding SerialPortViewModel.IsHexSend}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <CheckBox Content="十六进制显示" IsChecked="{Binding SerialPortViewModel.IsHexDisplay}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <CheckBox Content="自动换行" IsChecked="{Binding SerialPortViewModel.AddNewline}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Button Content="发送" Command="{Binding SerialPortViewModel.SendDataCommand}" Width="80" Margin="0,0,0,0" />
                         <Button Content="定时发送" Command="{Binding SerialPortViewModel.ToggleTimedSendCommand}" Width="80" Margin="10,0,0,0" />
                         <TextBox Name="TbxTimedSendInterval" Text="{Binding SerialPortViewModel.TimedSendInterval}" Width="60" Margin="10,0,10,0" />
                     </StackPanel>
