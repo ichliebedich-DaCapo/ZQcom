@@ -66,7 +66,7 @@ namespace ZQcom.ViewModels
         private int _pendingQueueSize = 0;                          // 待处理的队列大小
 
         // 定时器相关
-        private readonly DispatcherTimer _queueSizeUpdateTimer;
+        //private readonly DispatcherTimer _queueSizeUpdateTimer;
 
         // 线程相关
         private readonly ConcurrentQueue<string> _dataQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
@@ -111,11 +111,11 @@ namespace ZQcom.ViewModels
 
             // --------------定时器相关-------------- 
             // 初始化定时器，每500毫秒更新一次队列大小
-            _queueSizeUpdateTimer = new DispatcherTimer(DispatcherPriority.Background)
-            {
-                Interval = TimeSpan.FromMilliseconds(400)
-            };
-            _queueSizeUpdateTimer.Tick += OnQueueSizeUpdateTimerTick;
+            //_queueSizeUpdateTimer = new DispatcherTimer(DispatcherPriority.Background)
+            //{
+            //    Interval = TimeSpan.FromMilliseconds(400)
+            //};
+            //_queueSizeUpdateTimer.Tick += OnQueueSizeUpdateTimerTick;
 
         }
 
