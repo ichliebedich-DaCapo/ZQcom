@@ -113,7 +113,7 @@ namespace ZQcom.ViewModels
             // 初始化定时器，每500毫秒更新一次队列大小
             _queueSizeUpdateTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
-                Interval = TimeSpan.FromMilliseconds(200)
+                Interval = TimeSpan.FromMilliseconds(400)
             };
             _queueSizeUpdateTimer.Tick += OnQueueSizeUpdateTimerTick;
 
@@ -598,7 +598,7 @@ namespace ZQcom.ViewModels
             // 暂时不能放进异步UI线程，否则会出问题
             ReceiveBytes += sp.BytesToRead;
 
-            // 【UI更新】进行统计
+            // 【UI更新】【隐患】进行统计，有时候VS会报异常，但是没有看到实际影响
             Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 ++ReceiveNum;
@@ -716,7 +716,7 @@ namespace ZQcom.ViewModels
         // 发送日志消息
         private void LogMessage(string message)
         {
-            // 不知道为什么无法加入异步UI线程，加入后会很卡
+            // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
             if (IsDisableTimestamp)
             {
                 LogText += $" {message}{Environment.NewLine}";
@@ -859,11 +859,8 @@ namespace ZQcom.ViewModels
                 catch (FormatException ex)
                 {
                     // 其他异常
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
                         MessageBox.Show($"处理数据发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                         IsProcessData = false;// 关闭处理数据
-                    });
                 }
             }
         }
@@ -912,11 +909,11 @@ namespace ZQcom.ViewModels
 
         private void OnQueueSizeUpdateTimerTick(object sender, EventArgs e)
         {
-            // 异步更新队列大小，一定要异步更新不然会卡死
-            Application.Current.Dispatcher.InvokeAsync(() =>
-            {
+            // 无论是否使用异步UI线程，接收数据方面都不会有多少提升，但不使用的话此处观感上会更流畅
+            //Application.Current.Dispatcher.InvokeAsync(() =>
+            //{
                 PendingNum = _dataQueue.Count;
-            });
+            //});
         }
 
 
@@ -942,7 +939,7 @@ namespace ZQcom.ViewModels
             }
         }
         // 保存日志
-        private void SaveLog()
+        public void SaveLog()
         {
             try
             {

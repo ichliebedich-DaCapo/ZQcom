@@ -156,7 +156,7 @@
                         <CheckBox Content="自动换行" IsChecked="{Binding SerialPortViewModel.AddNewline}" VerticalAlignment="Center" Margin="0,0,10,0" />
                         <Button Content="发送" Command="{Binding SerialPortViewModel.SendDataCommand}" Width="80" Margin="0,0,0,0" />
                         <Button Content="定时发送" Command="{Binding SerialPortViewModel.ToggleTimedSendCommand}" Width="80" Margin="10,0,0,0" />
-                        <TextBox Name="TbxTimedSendInterval" Text="{Binding SerialPortViewModel.TimedSendInterval}" Width="60" Margin="10,0,10,0" />
+                        <TextBox Name="TbxTimedSendInterval" Text="{Binding SerialPortViewModel.TimedSendInterval}" Width="54" Margin="10,0,10,0" />
                     </StackPanel>
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
                         <Grid.RowDefinitions>
