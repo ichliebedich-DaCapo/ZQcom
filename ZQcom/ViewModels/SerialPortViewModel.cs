@@ -856,25 +856,25 @@ namespace ZQcom.ViewModels
                     else
                     {
                     // 尝试直接将字符串转换为32位浮点数
-
-                    //if (float.TryParse(processedData, out float result))
-                    //{
-                    //    floatValue = result;
-                    //    ConvertedDataMessage(result.ToString());
-                    //}
-                    //else
-                    //{
-                    //    if (!IsForceProcess)
-                    //    {
-                    //        MessageBox.Show("无法将数据转换为浮点数！");
-                    //        IsProcessData = false; // 关闭处理数据
-                    //        return;
-                    //    }
-                    //    else
-                    //    {
-                    //        ConvertedDataMessage("无法转换");
-                    //    }
-                    //}
+                    //【隐患】没有进行异常处理，前面字符串确实会黏连，这就非常奇怪。想要解决也很简单，来个图表直连
+                    if (float.TryParse(processedData, out float result))
+                    {
+                        floatValue = result;
+                        ConvertedDataMessage(result.ToString());
+                    }
+                    else
+                    {
+                        if (!IsForceProcess)
+                        {
+                            MessageBox.Show("无法将数据转换为浮点数！");
+                            IsProcessData = false; // 关闭处理数据
+                            return;
+                        }
+                        else
+                        {
+                            ConvertedDataMessage("无法转换");
+                        }
+                    }
                 }
 
                     // 发布事件
