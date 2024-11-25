@@ -468,7 +468,7 @@ namespace ZQcom.ViewModels
                     OpenCloseButtonText = "关闭串口";
 
                     // 启动定时器
-                    _queueSizeUpdateTimer.Start();
+                    //_queueSizeUpdateTimer.Start();
 
                     // 【生产者-消费者模式】启动数据处理任务
                     _processingCancellationTokenSource = new CancellationTokenSource();
@@ -598,11 +598,12 @@ namespace ZQcom.ViewModels
             // 暂时不能放进异步UI线程，否则会出问题
             ReceiveBytes += sp.BytesToRead;
 
-            // 【UI更新】【隐患】进行统计，有时候VS会报异常，但是没有看到实际影响
-            Application.Current.Dispatcher.InvokeAsync(() =>
-            {
+            // 【UI更新】进行统计，有时候VS会报异常，但是没有看到实际影响
+            // 还是取消掉吧，因为没有实际提升
+            //Application.Current.Dispatcher.InvokeAsync(() =>
+            //{
                 ++ReceiveNum;
-            });
+            //});
 
 
             string data = sp.ReadExisting();
@@ -876,7 +877,7 @@ namespace ZQcom.ViewModels
                     if (_dataQueue.TryDequeue(out string data))
                     {
                         // 更新队列大小
-                        //PendingNum =_dataQueue.Count;
+                        PendingNum = _dataQueue.Count;
 
                         // 处理数据
                         ProcessData(data);
@@ -902,8 +903,8 @@ namespace ZQcom.ViewModels
             finally
             {
                 // 数据处理任务完成，停止定时器
-                PendingNum = 0;
-                _queueSizeUpdateTimer.Stop();
+                //PendingNum = 0;
+                //_queueSizeUpdateTimer.Stop();
             }
         }
 
