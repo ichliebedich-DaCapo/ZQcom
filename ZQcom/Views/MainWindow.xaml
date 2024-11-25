@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ZQcom.Views" xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf" xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity" xmlns:behaviors="clr-namespace:ZQcom.Behaviors" xmlns:shell="http://schemas.microsoft.com/netfx/2009/xaml/presentation"
         mc:Ignorable="d"
-        Title="ZQcom" Height="1050" Width="1600"
+        Title="ZQcom" Height="1000" Width="1500"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -13,8 +13,8 @@
         >
     <!--
     AllowsTransparency="True"-->
-    
-    
+
+
     <!--渐变深灰背景，更偏向于黑灰交替，有种黑胶质感-->
     <!--<Window.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -65,16 +65,48 @@
             </GradientStop>
         </LinearGradientBrush>
     </Window.Background>-->
+    <Window.Resources>
+        <Style x:Key="RoundedButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="5">
+                            <!-- 设置圆角半径 -->
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#FFD3D3D3"/>
+                                <!-- 鼠标悬停时的背景色 -->
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#FFBDBDBD"/>
+                                <!-- 按下时的背景色 -->
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
 
+    <Border CornerRadius="10" Background="White" Padding="1"  Name="MainBorder"
+            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+             ClipToBounds="True">
+        
+        <DockPanel LastChildFill="True" ClipToBounds="True">
 
-    <Border CornerRadius="10" Background="White" Padding="1"  Name="MainBorder" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-        <DockPanel LastChildFill="True" >
-            
             <!-- 自定义标题栏 -->
-            <Border DockPanel.Dock="Top" Height="30" Background="LightGray" 
-                    BorderBrush="Black" BorderThickness="1"
-                    ClipToBounds="True">
+            <Border DockPanel.Dock="Top" CornerRadius="7"  Height="30" Background="LightGray">
                 <Grid Height="30">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -82,14 +114,15 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="10,0,0,0" Grid.Column="0" />
+                    <!--暂时先用按钮凑合凑合-->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Column="2">
-                        <Button Content="最小化" Click="MinimizeButton_Click" Width="70" Margin="0,0,5,0" />
-                        <Button Content="最大化" Click="MaximizeButton_Click" Width="70" Margin="0,0,5,0" />
-                        <Button Content="关闭" Click="CloseButton_Click" Width="70" Margin="0,0,0,0" />
+                        <Button Style="{StaticResource RoundedButtonStyle}" Content="最小化" Click="MinimizeButton_Click" Width="70"  Margin="0,0,5,0" />
+                        <Button Style="{StaticResource RoundedButtonStyle}" Content="最大化" Click="MaximizeButton_Click" Width="70" Margin="0,0,5,0" />
+                        <Button Style="{StaticResource RoundedButtonStyle}" Content="关闭" Click="CloseButton_Click" Width="70"  Margin="0,0,0,0" />
                     </StackPanel>
                 </Grid>
             </Border>
-            
+
             <!--主题框架-->
             <Grid >
                 <Grid.ColumnDefinitions>
