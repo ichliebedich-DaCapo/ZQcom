@@ -591,24 +591,22 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 接收数据
-
+        // 接收打印数据
         private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
         {
             if (sender is SerialPort sp)
             {
-                // 暂时不能放进异步UI线程，否则会出问题
-                ReceiveBytes += sp.BytesToRead;
 
+                // ----------------接收串口数据过程------------------
+                // 暂时不能放进异步UI线程，否则会出问题
                 // 【UI更新】进行统计，有时候VS会报异常，但是没有看到实际影响
-                // 还是取消掉吧，因为没有实际提升
-                // Application.Current.Dispatcher.InvokeAsync(() =>
-                // {
-                //     ++ReceiveNum;
-                // });
+                ReceiveBytes += sp.BytesToRead;
+                ++ReceiveNum;
 
                 string data = sp.ReadExisting();
 
+
+                // ----------------打印串口数据过程------------------
                 // 格式化数据
                 data = FormatData(data);
 
@@ -616,6 +614,7 @@ namespace ZQcom.ViewModels
                 // 不能加入到UI异步更新线程，否则容易卡死
                 LogMessage($">> {data}");
 
+                // ----------------处理数据异步过程------------------
                 // 【生产者-消费者模式】
                 // 只有开启数据处理时才将数据添加到队列中
                 if (IsProcessData)
