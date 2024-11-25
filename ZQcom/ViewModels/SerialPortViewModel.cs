@@ -16,6 +16,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Collections.Concurrent;
 using ZQcom.Helpers;
+using System.Windows.Threading;
 
 namespace ZQcom.ViewModels
 {
@@ -59,6 +60,9 @@ namespace ZQcom.ViewModels
         private int _sendNum = 0;                                   // 发送的数据包数量
         private int _pendingQueueSize = 0;                          // 待处理的队列大小
 
+        // 定时器相关
+        private readonly DispatcherTimer _queueSizeUpdateTimer;
+
         // 线程相关
         private readonly ConcurrentQueue<string> _dataQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
         private CancellationTokenSource? _processingCancellationTokenSource;
@@ -100,6 +104,13 @@ namespace ZQcom.ViewModels
 
             // --------------线程相关--------------
 
+            // --------------定时器相关-------------- 
+            // 初始化定时器，每500毫秒更新一次队列大小
+            _queueSizeUpdateTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _queueSizeUpdateTimer.Tick += OnQueueSizeUpdateTimerTick;
 
         }
 
@@ -447,9 +458,12 @@ namespace ZQcom.ViewModels
 
                 try
                 {
-                    // 打开串口逻辑
+                    // -------------打开串口逻辑-------------
                     _serialPort = _serialPortService.OpenPort(SelectedSerialPort, baudRate, SelectedParity, SelectedStopBits, SelectedDataBits);
                     OpenCloseButtonText = "关闭串口";
+
+                    // 启动定时器
+                    _queueSizeUpdateTimer.Start();
 
                     // 【生产者-消费者模式】启动数据处理任务
                     _processingCancellationTokenSource = new CancellationTokenSource();
@@ -462,10 +476,11 @@ namespace ZQcom.ViewModels
             }
             else
             {
-                // 关闭串口逻辑
+                // -------------关闭串口逻辑-------------
                 _serialPortService.ClosePort(_serialPort);
                 _serialPort = null;
                 OpenCloseButtonText = "打开串口";
+
 
                 // 【生产者-消费者模式】停止数据处理任务
                 if (_processingCancellationTokenSource != null && _processingTask != null)
@@ -836,7 +851,7 @@ namespace ZQcom.ViewModels
                     if (_dataQueue.TryDequeue(out string data))
                     {
                         // 更新队列大小
-                        PendingNum =_dataQueue.Count;
+                        //PendingNum =_dataQueue.Count;
 
                         // 处理数据
                         ProcessData(data);
@@ -844,6 +859,7 @@ namespace ZQcom.ViewModels
                     else
                     {
                         // 如果队列为空，稍作等待
+                        //PendingNum = 0;
                         await Task.Delay(100, cancellationToken);
                     }
                 }
@@ -858,7 +874,22 @@ namespace ZQcom.ViewModels
                 // 处理其他异常
                 MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                // 数据处理任务完成，停止定时器
+                _queueSizeUpdateTimer.Stop();
+            }
         }
+
+        private void OnQueueSizeUpdateTimerTick(object sender, EventArgs e)
+        {
+            // 异步更新队列大小，一定要异步更新不然会卡死
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                PendingNum = _dataQueue.Count;
+            });
+        }
+
 
         // 初始化日志文件
         //private void InitializeLogFile()
