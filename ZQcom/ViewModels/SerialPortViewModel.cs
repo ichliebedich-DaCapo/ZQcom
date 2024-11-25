@@ -583,9 +583,10 @@ namespace ZQcom.ViewModels
                 {
                     ++SendNum;
                 });
-                
+
 
                 // 发送到日志框内
+                // 不能加入到UI异步更新线程，否则容易卡死
                 LogMessage($"<< {data}");
             }
         }
@@ -609,8 +610,9 @@ namespace ZQcom.ViewModels
             // 格式化数据
             data = FormatData(data);
             // 输出到对应框中
-            LogMessage($">> {data}");
-
+            // 不能加入到UI异步更新线程，否则容易卡死
+                LogMessage($">> {data}");
+    
             // 同步处理数据   但效率堪忧
             //ProcessData(data);// 处理数据
 
@@ -727,13 +729,13 @@ namespace ZQcom.ViewModels
         // 发送截取数据
         private void ExtractedDataMessage(string data)
         {
-            // 不知道为什么无法加入异步UI线程，加入后会很卡
+            // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
             ExtractedText += $"{data}{Environment.NewLine}";
         }
         // 发送处理过的数据
         private void ConvertedDataMessage(string data)
         {
-            // 不知道为什么无法加入异步UI线程，加入后会很卡
+            // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
             ConvertedText += $"{data}{Environment.NewLine}";
         }
 
@@ -886,7 +888,7 @@ namespace ZQcom.ViewModels
                     {
                         // 如果队列为空，稍作等待
                         //PendingNum = 0;
-                        await Task.Delay(100, cancellationToken);
+                        await Task.Delay(50, cancellationToken);
                     }
                 }
             }
@@ -903,6 +905,7 @@ namespace ZQcom.ViewModels
             finally
             {
                 // 数据处理任务完成，停止定时器
+                PendingNum = 0;
                 _queueSizeUpdateTimer.Stop();
             }
         }
