@@ -209,17 +209,50 @@ namespace ZQcom.ViewModels
 
         private void LoadAndProcessData(string filePath)
         {
-            List<double> dataPoints = File.ReadAllLines(filePath)
-                                          .Where(line => double.TryParse(line, out _))
-                                          .Select(line => double.Parse(line))
-                                          .ToList();
-
-            foreach (var point in dataPoints)
-            {
-                _dataDisplayChartValues.Add(point);
-            }
+            _dataDisplayChartValues = File.ReadAllLines(filePath)
+                                           .SelectMany(ExtractNumbersFromLine)
+                                           .Where(number => !double.IsNaN(number))
+                                           .ToList();
         }
 
+        private IEnumerable<double> ExtractNumbersFromLine(string line)
+        {
+            // 去除前后空白字符
+            line = line.Trim();
+
+            // 尝试从 ">>" 后面提取数字
+            if (line.Contains(">>"))
+            {
+                var parts = line.Split(new[] { ">>" }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    if (double.TryParse(part.Trim(), out double number))
+                    {
+                        yield return number;
+                    }
+                }
+            }
+            // 尝试从时间戳后面的数字提取
+            else if (line.Contains(':'))
+            {
+                var parts = line.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    if (double.TryParse(part.Trim(), out double number))
+                    {
+                        yield return number;
+                    }
+                }
+            }
+            // 尝试直接解析整行
+            else
+            {
+                if (double.TryParse(line, out double number))
+                {
+                    yield return number;
+                }
+            }
+        }
         // // 用于调试
         //public ICommand DebugCommand => new RelayCommand(DebugAddPoints);
 
