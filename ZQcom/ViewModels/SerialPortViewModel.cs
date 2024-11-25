@@ -857,24 +857,24 @@ namespace ZQcom.ViewModels
                     {
                     // 尝试直接将字符串转换为32位浮点数
 
-                    if (float.TryParse(processedData, out float result))
-                    {
-                        floatValue = result;
-                        ConvertedDataMessage(result.ToString());
-                    }
-                    else
-                    {
-                        if (!IsForceProcess)
-                        {
-                            MessageBox.Show("无法将数据转换为浮点数！");
-                            IsProcessData = false; // 关闭处理数据
-                            return;
-                        }
-                        else
-                        {
-                            ConvertedDataMessage("无法转换");
-                        }
-                    }
+                    //if (float.TryParse(processedData, out float result))
+                    //{
+                    //    floatValue = result;
+                    //    ConvertedDataMessage(result.ToString());
+                    //}
+                    //else
+                    //{
+                    //    if (!IsForceProcess)
+                    //    {
+                    //        MessageBox.Show("无法将数据转换为浮点数！");
+                    //        IsProcessData = false; // 关闭处理数据
+                    //        return;
+                    //    }
+                    //    else
+                    //    {
+                    //        ConvertedDataMessage("无法转换");
+                    //    }
+                    //}
                 }
 
                     // 发布事件
