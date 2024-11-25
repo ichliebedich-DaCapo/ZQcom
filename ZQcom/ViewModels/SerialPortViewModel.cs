@@ -939,7 +939,7 @@ namespace ZQcom.ViewModels
         public void OpenLogDirectory()
         {
             string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Log");
-            EnsureDirectoryExists(Path.GetDirectoryName(logDirectory));
+            EnsureDirectoryExists(logDirectory); // 直接传递 logDirectory
             try
             {
                 Process.Start(new ProcessStartInfo("explorer.exe", logDirectory));
