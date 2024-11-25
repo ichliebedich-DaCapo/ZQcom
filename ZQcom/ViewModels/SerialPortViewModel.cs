@@ -593,37 +593,39 @@ namespace ZQcom.ViewModels
 
         // 接收数据
 
-        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+        private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
         {
-            var sp = (SerialPort)sender;
-            // 暂时不能放进异步UI线程，否则会出问题
-            ReceiveBytes += sp.BytesToRead;
-
-            // 【UI更新】进行统计，有时候VS会报异常，但是没有看到实际影响
-            // 还是取消掉吧，因为没有实际提升
-            //Application.Current.Dispatcher.InvokeAsync(() =>
-            //{
-            ++ReceiveNum;
-            //});
-
-            string data = sp.ReadExisting();
-
-            // 格式化数据
-            data = FormatData(data);
-
-            // 输出到对应框中
-            // 不能加入到UI异步更新线程，否则容易卡死
-            LogMessage($">> {data}");
-
-            // 【生产者-消费者模式】
-            // 只有开启数据处理时才将数据添加到队列中
-            if (IsProcessData)
+            if (sender is SerialPort sp)
             {
-                lock (_queueLock)
+                // 暂时不能放进异步UI线程，否则会出问题
+                ReceiveBytes += sp.BytesToRead;
+
+                // 【UI更新】进行统计，有时候VS会报异常，但是没有看到实际影响
+                // 还是取消掉吧，因为没有实际提升
+                // Application.Current.Dispatcher.InvokeAsync(() =>
+                // {
+                //     ++ReceiveNum;
+                // });
+
+                string data = sp.ReadExisting();
+
+                // 格式化数据
+                data = FormatData(data);
+
+                // 输出到对应框中
+                // 不能加入到UI异步更新线程，否则容易卡死
+                LogMessage($">> {data}");
+
+                // 【生产者-消费者模式】
+                // 只有开启数据处理时才将数据添加到队列中
+                if (IsProcessData)
                 {
-                    _dataQueue.Enqueue(data);
-                    // 更新队列大小
-                    PendingNum = _dataQueue.Count;
+                    lock (_queueLock)
+                    {
+                        _dataQueue.Enqueue(data);
+                        // 更新队列大小
+                        PendingNum = _dataQueue.Count;
+                    }
                 }
             }
         }
@@ -934,11 +936,14 @@ namespace ZQcom.ViewModels
             return $"Log/log_{timestamp}.txt";
         }
         // 确保目录存在
-        private void EnsureDirectoryExists(string directoryPath)
+        private void EnsureDirectoryExists(string? directoryPath)
         {
-            if (!Directory.Exists(directoryPath))
+            if (directoryPath != null)
             {
-                Directory.CreateDirectory(directoryPath);
+                if (!Directory.Exists(directoryPath))
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
             }
         }
         // 保存日志
