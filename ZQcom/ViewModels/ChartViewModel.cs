@@ -22,7 +22,7 @@ namespace ZQcom.ViewModels
         private bool _isEnableChart = false;                                // 启用图表,默认不可视
         private int _maxChartPoints = 100;                                  // 图表最大数据点数
         private bool _isDisableAnimation = false;                           // 禁用动画
-        private ChartValues<double> _dataDisplayChartValues = new ChartValues<double>();// 数据显示图表数据
+        private List<double> _dataDisplayChartValues = new List<double>();  // 数据显示图表数据
 
 
         // 用于订阅事件
@@ -112,8 +112,7 @@ namespace ZQcom.ViewModels
 
 
         // 显示在图表中的数据
-        // 【隐患】没有合理用上ChartModel，如果这般做下去，后面会很乱
-        public ChartValues<double> DataDisplayChartValues
+        public List<double> DataDisplayChartValues
         {
             get => _dataDisplayChartValues;
             set
@@ -210,14 +209,11 @@ namespace ZQcom.ViewModels
 
         private void LoadAndProcessData(string filePath)
         {
-            // 从文件路径加载数据并处理
-            // 只保留可以转换为浮点数的有效数据
             List<double> dataPoints = File.ReadAllLines(filePath)
                                           .Where(line => double.TryParse(line, out _))
                                           .Select(line => double.Parse(line))
                                           .ToList();
 
-            // 使用图表模型的AddDataPoint方法逐个添加数据点
             foreach (var point in dataPoints)
             {
                 _dataDisplayChartValues.Add(point);
