@@ -182,6 +182,8 @@
                             <TextBlock Text="{Binding SerialPortViewModel.ReceiveNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
                             <TextBlock Text="发送数量:" VerticalAlignment="Center" Margin="10,0,10,0" />
                             <TextBlock Text="{Binding SerialPortViewModel.SendNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60"  />
+                            <TextBlock Text="待处理:" VerticalAlignment="Center" Margin="10,0,10,0" />
+                            <TextBlock Text="{Binding SerialPortViewModel.PendingNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="56"  />
                         </StackPanel>
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
                             <CheckBox Content="处理数据" IsChecked="{Binding SerialPortViewModel.IsProcessData}" Margin="0,0,10,0" Height="14" />

@@ -53,10 +53,11 @@ namespace ZQcom.ViewModels
         //private bool _isLogSave=false;                              // 是否保存日志
         private bool _isDisableTimestamp=false;                     // 是否禁用时间戳
         private bool _isForceProcess = false;                       // 是否强制处理数据
-        private int _receiveBytes = 0;                             // 接收到的字节数
-        private int _sendBytes = 0;                                // 发送的字节数
-        private int _receiveNum = 0;                               // 接收到的数据包数量
-        private int _sendNum = 0;                                  // 发送的数据包数量
+        private int _receiveBytes = 0;                              // 接收到的字节数
+        private int _sendBytes = 0;                                 // 发送的字节数
+        private int _receiveNum = 0;                                // 接收到的数据包数量
+        private int _sendNum = 0;                                   // 发送的数据包数量
+        private int _pendingQueueSize = 0;                          // 待处理的队列大小
 
         // 线程相关
         private readonly ConcurrentQueue<string> _dataQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
@@ -398,6 +399,17 @@ namespace ZQcom.ViewModels
             }
         }
 
+        // 待处理数量
+        public int PendingNum
+        {
+            get => _pendingQueueSize;
+            set
+            {
+                _pendingQueueSize = value;
+                RaisePropertyChanged(nameof(PendingNum));
+            }
+        }
+
 
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
@@ -463,7 +475,8 @@ namespace ZQcom.ViewModels
                     try
                     {
                         // 使用异步等待，防止阻塞主线程
-                        await _processingTask.WithTimeout(TimeSpan.FromSeconds(5)); // 设置超时时间为5秒
+                        
+                        await _processingTask.WithTimeout(TimeSpan.FromSeconds(10)); // 设置超时时间为5秒
                     }
                     catch (OperationCanceledException)
                     {
@@ -472,7 +485,8 @@ namespace ZQcom.ViewModels
                     catch (TimeoutException)
                     {
                         // 超时处理
-                        MessageBox.Show("数据处理任务超时，强制关闭。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        // 只是会抛出警告，但不会进行任何处理
+                        MessageBox.Show("数据处理任务已超时。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                     catch (Exception ex)
                     {
@@ -812,20 +826,37 @@ namespace ZQcom.ViewModels
         }
 
         // 【生产者-消费者模式】启用异步处理数据
-        public async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
+        private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                if (_dataQueue.TryDequeue(out string data))
+                // 模拟数据处理逻辑
+                while (!_dataQueue.IsEmpty || !cancellationToken.IsCancellationRequested)
                 {
-                    // 处理数据
-                    ProcessData(data);
+                    if (_dataQueue.TryDequeue(out string data))
+                    {
+                        // 更新队列大小
+                        PendingNum =_dataQueue.Count;
+
+                        // 处理数据
+                        ProcessData(data);
+                    }
+                    else
+                    {
+                        // 如果队列为空，稍作等待
+                        await Task.Delay(100, cancellationToken);
+                    }
                 }
-                else
-                {
-                    // 如果队列为空，稍作等待
-                    await Task.Delay(100, cancellationToken);
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 任务被取消
+                // 清理资源
+            }
+            catch (Exception ex)
+            {
+                // 处理其他异常
+                MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

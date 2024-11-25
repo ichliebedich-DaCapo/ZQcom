@@ -17,6 +17,7 @@ namespace ZQcom.Helpers
             }
             else
             {
+                // 仅仅只是抛出异常，并没有任何处理
                 throw new TimeoutException("The operation timed out.");
             }
         }
