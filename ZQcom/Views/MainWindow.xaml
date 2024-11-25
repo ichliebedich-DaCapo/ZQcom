@@ -72,22 +72,23 @@
         <DockPanel LastChildFill="True" >
             
             <!-- 自定义标题栏 -->
-            <!--<Border DockPanel.Dock="Top"   Height="30" Background="LightGray" >-->
-                <DockPanel  Height="30"  DockPanel.Dock="Top">
-                <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="0,0,0,0" />
-                <!--<Button Content="主题" Width="70" Margin="80,0,0,0">
-                    <Button.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem Header="Default Theme" Tag="Default" />
-                            <MenuItem Header="Purple Theme"  Tag="Purple" />
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>-->
-                <Button Content="最小化" Click="MinimizeButton_Click" Width="70" HorizontalAlignment="Right" Margin="1345,0,0,0" />
-                <Button Content="最大化" Click="MaximizeButton_Click" Width="70" HorizontalAlignment="Right" Margin="0,0,0,0" />
-                <Button Content="关闭" Click="CloseButton_Click" Width="70" HorizontalAlignment="Right" Margin="0,0,0,0" />
-            </DockPanel>
-            <!--</Border>-->
+            <Border DockPanel.Dock="Top" Height="30" Background="LightGray" 
+                    BorderBrush="Black" BorderThickness="1"
+                    ClipToBounds="True">
+                <Grid Height="30">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="10,0,0,0" Grid.Column="0" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Column="2">
+                        <Button Content="最小化" Click="MinimizeButton_Click" Width="70" Margin="0,0,5,0" />
+                        <Button Content="最大化" Click="MaximizeButton_Click" Width="70" Margin="0,0,5,0" />
+                        <Button Content="关闭" Click="CloseButton_Click" Width="70" Margin="0,0,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
             
             <!--主题框架-->
             <Grid >
