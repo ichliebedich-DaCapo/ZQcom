@@ -420,7 +420,7 @@ namespace ZQcom.ViewModels
             }
         }
         // 启用/禁用串口
-        private void ToggleSerialPort()
+        private async void ToggleSerialPort()
         {
             if (_serialPort == null || !_serialPort.IsOpen)
             {
@@ -453,18 +453,19 @@ namespace ZQcom.ViewModels
                 OpenCloseButtonText = "打开串口";
 
                 // 【生产者-消费者模式】停止数据处理任务
-                if(_processingCancellationTokenSource != null&&_processingTask != null)
-               { 
+                if (_processingCancellationTokenSource != null && _processingTask != null)
+                {
                     _processingCancellationTokenSource.Cancel();
-                    _processingTask.Wait();
+
                 }
                 else
                 {
-                    MessageBox.Show($"数据处理任何发生异常，丢失引用", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"数据处理任务发生异常，丢失引用", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-
             }
         }
+
+
 
 
         // 发送数据
@@ -672,7 +673,6 @@ namespace ZQcom.ViewModels
                     // 获取数据起始位置和长度
                     int startIndex = StartPosition - 1; // 起始位置从1开始
                     int length = Length;
-                    bool processState = false;
 
                     // 检查起始位置
                     if (StartPosition <= 0 && length!=-1)
