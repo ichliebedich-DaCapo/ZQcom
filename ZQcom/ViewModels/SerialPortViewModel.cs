@@ -917,14 +917,6 @@ namespace ZQcom.ViewModels
             //});
         }
 
-
-        // 初始化日志文件
-        //private void InitializeLogFile()
-        //{
-        //    _logFilePath = GenerateLogFileName();
-        //    _fileStream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-        //    _writer = new StreamWriter(_fileStream) { AutoFlush = true };
-        //}
         // 生成日志文件名
         private string GenerateLogFileName()
         {
