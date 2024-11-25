@@ -10,7 +10,8 @@ namespace ZQcom
     public partial class App : Application
     {
         private MainViewModel _mainViewModel;
-
+        public static ResourceDictionary DefaultTheme { get; private set; }
+        public static ResourceDictionary PurpleTheme { get; private set; }
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -30,5 +31,27 @@ namespace ZQcom
         {
             base.OnExit(e);
         }
-    }
+
+        public App()
+        {
+            //DefaultTheme = new ResourceDictionary { Source = new Uri("Resources//Styles/DefaultStyle.xaml", UriKind.Relative) };
+            //PurpleTheme = new ResourceDictionary { Source = new Uri("Resources/Styles/PurpleStyle.xaml", UriKind.Relative) };
+
+            ////默认加载紫色主题
+            //Current.Resources.MergedDictionaries.Add(PurpleTheme);
+        }
+
+        public static void SwitchTheme(string themeName)
+        {
+            Current.Resources.MergedDictionaries.Clear();
+            if (themeName == "Default")
+            {
+                Current.Resources.MergedDictionaries.Add(DefaultTheme);
+            }
+            else if (themeName == "Purple")
+            {
+                Current.Resources.MergedDictionaries.Add(PurpleTheme);
+            }
+        }
+}
 }

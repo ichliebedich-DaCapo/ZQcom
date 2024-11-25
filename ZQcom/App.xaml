@@ -5,6 +5,11 @@
     <!--这个本来是在上面的，但由于我在App.xaml.cs里已经创建窗口了，这里就不许需要了-->
     <!--StartupUri="Views/MainWindow.xaml"-->
     <Application.Resources>
-
+        <!--引用资源目录-->
+        <!--<ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>-->
     </Application.Resources>
 </Application>
