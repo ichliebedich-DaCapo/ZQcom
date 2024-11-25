@@ -237,7 +237,7 @@
                         <!--现在想做实时FFT但还有些麻烦，如果使用缓存那么图像就不连续，如果不使用，那么开销就会很大，也许使用异步会好一些-->
                         <Button Content="FFT" Command="{Binding ChartViewModel.FFTCommand}" Width="80" Margin="10,0,0,0" />
                         <Button Content="清屏" Command="{Binding ChartViewModel.ClearChartCommand}" Width="80" Margin="10,0,0,0" />
-                        <Button Content="数据打印" Command="{Binding ChartViewModel.DataDisplayCommand}" Width="80" Margin="10,0,0,0" />
+                        <Button Content="数据打印" Command="{Binding ChartViewModel.DataDisplayChartCommand}" Width="80" Margin="10,0,0,0" />
                     </StackPanel>
 
                     <Grid DockPanel.Dock="Top" Margin="0,5,0,10">

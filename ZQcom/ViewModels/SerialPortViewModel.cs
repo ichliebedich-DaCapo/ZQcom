@@ -915,14 +915,18 @@ namespace ZQcom.ViewModels
                 string logFilePath = GenerateLogFileName();
                 EnsureDirectoryExists(Path.GetDirectoryName(logFilePath));
                 // 保存日志框
-                File.WriteAllText(logFilePath, LogText);
+                if (LogText != "")
+                    File.WriteAllText(logFilePath, LogText);
                 // 保存处理数据框
-                if(IsProcessData)
+                if (IsProcessData)
                 {
-                    File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText);
-                    File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText);
+                    if (ExtractedText != "")
+                        File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText);
+                    if (ConvertedText != "")
+                        File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText);
                 }
-                MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (ReceiveText != "" || ExtractedText != "" || ConvertedText != "")
+                    MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -957,6 +961,9 @@ namespace ZQcom.ViewModels
                 LogText = string.Empty;
                 ExtractedText = string.Empty;
                 ConvertedText = string.Empty;
+                _receiveQueue.Clear();//清空接收队列
+                _logQueue.Clear();
+
                 // 清除接收发送数据统计
                 ReceiveBytes = 0;
                 SendBytes = 0;
