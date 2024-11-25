@@ -69,9 +69,12 @@ namespace ZQcom.ViewModels
         //private readonly DispatcherTimer _queueSizeUpdateTimer;
 
         // 线程相关
-        private readonly ConcurrentQueue<string> _dataQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
+        private readonly ConcurrentQueue<string> _receiveQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
+        private readonly ConcurrentQueue<string> _logQueue = new ConcurrentQueue<string>();
         private CancellationTokenSource? _processingCancellationTokenSource;
         private Task? _processingTask;
+        private Task? _logProcessingTask;
+
 
 
         // 事件
@@ -473,6 +476,9 @@ namespace ZQcom.ViewModels
                     // 【生产者-消费者模式】启动数据处理任务
                     _processingCancellationTokenSource = new CancellationTokenSource();
                     _processingTask = Task.Run(async () => await ProcessDataQueueAsync(_processingCancellationTokenSource.Token), _processingCancellationTokenSource.Token);
+
+                    // 启动日志打印任务
+                    _logProcessingTask = Task.Run(async () => await ProcessLogQueueAsync(_processingCancellationTokenSource.Token), _processingCancellationTokenSource.Token);
                 }
                 catch (Exception ex)
                 {
@@ -486,17 +492,23 @@ namespace ZQcom.ViewModels
                 _serialPort = null;
                 OpenCloseButtonText = "打开串口";
 
-
                 // 【生产者-消费者模式】停止数据处理任务
-                if (_processingCancellationTokenSource != null && _processingTask != null)
+                if (_processingCancellationTokenSource != null && (_processingTask != null || _logProcessingTask != null))
                 {
                     _processingCancellationTokenSource.Cancel();
 
                     try
                     {
                         // 使用异步等待，防止阻塞主线程
-                        
-                        await _processingTask.WithTimeout(TimeSpan.FromSeconds(10)); // 设置超时时间为5秒
+                        if (_processingTask != null)
+                        {
+                            await _processingTask.WithTimeout(TimeSpan.FromSeconds(10)); // 设置超时时间为10秒
+                        }
+
+                        if (_logProcessingTask != null)
+                        {
+                            await _logProcessingTask.WithTimeout(TimeSpan.FromSeconds(10)); // 设置超时时间为10秒
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -505,7 +517,6 @@ namespace ZQcom.ViewModels
                     catch (TimeoutException)
                     {
                         // 超时处理
-                        // 只是会抛出警告，但不会进行任何处理
                         MessageBox.Show("数据处理任务已超时。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                     catch (Exception ex)
@@ -519,7 +530,6 @@ namespace ZQcom.ViewModels
                 }
             }
         }
-
 
 
 
@@ -596,39 +606,54 @@ namespace ZQcom.ViewModels
         {
             if (sender is SerialPort sp)
             {
-
-                // ----------------接收串口数据过程------------------
-                // 暂时不能放进异步UI线程，否则会出问题
-                // 【UI更新】进行统计，有时候VS会报异常，但是没有看到实际影响
                 ReceiveBytes += sp.BytesToRead;
                 ++ReceiveNum;
 
                 string data = sp.ReadExisting();
-
-
-                // ----------------打印串口数据过程------------------
-                // 格式化数据
-                data = FormatData(data);
-
-                // 输出到对应框中
-                // 不能加入到UI异步更新线程，否则容易卡死
-                LogMessage($">> {data}");
-
-                // ----------------处理数据异步过程------------------
-                // 【生产者-消费者模式】
-                // 只有开启数据处理时才将数据添加到队列中
-                if (IsProcessData)
-                {
-                    lock (_queueLock)
-                    {
-                        _dataQueue.Enqueue(data);
-                        // 更新队列大小
-                        PendingNum = _dataQueue.Count;
-                    }
-                }
+                _receiveQueue.Enqueue(data); // 将接收到的数据放入接收队列
             }
         }
 
+
+        private async Task ProcessLogQueueAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (_receiveQueue.TryDequeue(out var data))
+                {
+                    data = FormatData(data);
+                    LogMessage($">> {data}");
+                    _logQueue.Enqueue(data); // 将格式化后的数据放入日志队列
+                }
+                else
+                {
+                    await Task.Delay(100, cancellationToken); // 队列为空时等待
+                }
+            }
+        }
+        private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (!_logQueue.IsEmpty || !cancellationToken.IsCancellationRequested)
+                {
+                    if (_logQueue.TryDequeue(out var data))
+                    {
+                        ProcessData(data);
+                        PendingNum = _logQueue.Count; // 更新队列大小
+                    }
+                    else
+                    {
+                        await Task.Delay(100, cancellationToken);
+                    }
+                }
+            }
+            catch (OperationCanceledException) { /* 任务被取消 */ }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         // 启用/禁用定时发送
         private async void ToggleTimedSend()
@@ -766,7 +791,7 @@ namespace ZQcom.ViewModels
                     string processedData;
                     // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
                     string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
-                    // 最终转换的浮点数据
+                    // 最终转换的浮点数据,默认为0
                     float floatValue=0.0f;
 
 
@@ -809,8 +834,6 @@ namespace ZQcom.ViewModels
                             }
                             else
                             {
-                                // 发送0表示无法转换
-                                floatValue = 0.0f;
                                 ConvertedDataMessage("长度不足");
                             }
                         }
@@ -832,28 +855,27 @@ namespace ZQcom.ViewModels
                     }
                     else
                     {
-                        // 尝试直接将字符串转换为32位浮点数
-                        if (float.TryParse(processedData, out float result))
+                    // 尝试直接将字符串转换为32位浮点数
+
+                    if (float.TryParse(processedData, out float result))
+                    {
+                        floatValue = result;
+                        ConvertedDataMessage(result.ToString());
+                    }
+                    else
+                    {
+                        if (!IsForceProcess)
                         {
-                            floatValue = result;
-                            ConvertedDataMessage(result.ToString());
+                            MessageBox.Show("无法将数据转换为浮点数！");
+                            IsProcessData = false; // 关闭处理数据
+                            return;
                         }
                         else
                         {
-                            if (!IsForceProcess)
-                            {
-                                MessageBox.Show("无法将数据转换为浮点数！");
-                                IsProcessData = false; // 关闭处理数据
-                                return;
-                            }
-                            else
-                            {
-                                // 发送0表示无法转换
-                                floatValue = 0.0f;
-                                ConvertedDataMessage("无法转换");
-                            }
+                            ConvertedDataMessage("无法转换");
                         }
                     }
+                }
 
                     // 发布事件
                     _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
@@ -866,67 +888,7 @@ namespace ZQcom.ViewModels
                 }
         }
 
-        // 【生产者-消费者模式】启用异步处理数据
-        private readonly object _queueLock = new object();
 
-        private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                while (!_dataQueue.IsEmpty || !cancellationToken.IsCancellationRequested)
-                {
-                    string? data;
-                    lock (_queueLock)
-                    {
-                        if (_dataQueue.TryDequeue(out data))
-                        {
-                            // 更新队列大小
-                            PendingNum = _dataQueue.Count;
-                        }
-                        else
-                        {
-                            data = null;
-                        }
-                    }
-
-                    if (data != null)
-                    {
-                        // 处理数据
-                        ProcessData(data);
-                    }
-                    else
-                    {
-                        // 如果队列为空，稍作等待，避免频繁检查队列是否为空
-                        await Task.Delay(100, cancellationToken);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // 任务被取消
-                // 清理资源
-            }
-            catch (Exception ex)
-            {
-                // 处理其他异常
-                MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                // 数据处理任务完成，停止定时器
-                //PendingNum = 0;
-                //_queueSizeUpdateTimer.Stop();
-            }
-        }
-
-        //private void OnQueueSizeUpdateTimerTick(object sender, EventArgs e)
-        //{
-        //    // 无论是否使用异步UI线程，接收数据方面都不会有多少提升，但不使用的话此处观感上会更流畅
-        //    //Application.Current.Dispatcher.InvokeAsync(() =>
-        //    //{
-        //        PendingNum = _dataQueue.Count;
-        //    //});
-        //}
 
         // 生成日志文件名
         private string GenerateLogFileName()
