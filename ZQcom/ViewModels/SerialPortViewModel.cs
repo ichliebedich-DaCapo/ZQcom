@@ -592,6 +592,7 @@ namespace ZQcom.ViewModels
         }
 
         // 接收数据
+
         private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             var sp = (SerialPort)sender;
@@ -602,28 +603,29 @@ namespace ZQcom.ViewModels
             // 还是取消掉吧，因为没有实际提升
             //Application.Current.Dispatcher.InvokeAsync(() =>
             //{
-                ++ReceiveNum;
+            ++ReceiveNum;
             //});
-
 
             string data = sp.ReadExisting();
 
             // 格式化数据
             data = FormatData(data);
+
             // 输出到对应框中
             // 不能加入到UI异步更新线程，否则容易卡死
-                LogMessage($">> {data}");
-    
-            // 同步处理数据   但效率堪忧
-            //ProcessData(data);// 处理数据
-
-            //// 将处理数据的操作放在后台线程中执行，只不过我试了一下，发现会导致图表功能失常（没有任何反应），不知道什么原因
-            //Task.Run(() => ProcessData(data));
+            LogMessage($">> {data}");
 
             // 【生产者-消费者模式】
-            // 将数据添加到队列中
-            _dataQueue.Enqueue(data);
-
+            // 只有开启数据处理时才将数据添加到队列中
+            if (IsProcessData)
+            {
+                lock (_queueLock)
+                {
+                    _dataQueue.Enqueue(data);
+                    // 更新队列大小
+                    PendingNum = _dataQueue.Count;
+                }
+            }
         }
 
 
@@ -745,8 +747,6 @@ namespace ZQcom.ViewModels
         // 开启16进制显示时会以16进制数据处理，不开启则以普通字符串处理
         private void ProcessData(string data)
         {
-            if (IsProcessData)
-            {
                 try
                 {
                     // 获取数据起始位置和长度
@@ -863,30 +863,40 @@ namespace ZQcom.ViewModels
                         MessageBox.Show($"处理数据发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                         IsProcessData = false;// 关闭处理数据
                 }
-            }
         }
 
         // 【生产者-消费者模式】启用异步处理数据
+        private readonly object _queueLock = new object();
+
         private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
         {
             try
             {
-                // 模拟数据处理逻辑
                 while (!_dataQueue.IsEmpty || !cancellationToken.IsCancellationRequested)
                 {
-                    if (_dataQueue.TryDequeue(out string data))
+                    string? data;
+                    lock (_queueLock)
                     {
-                        // 更新队列大小
-                        PendingNum = _dataQueue.Count;
+                        if (_dataQueue.TryDequeue(out data))
+                        {
+                            // 更新队列大小
+                            PendingNum = _dataQueue.Count;
+                        }
+                        else
+                        {
+                            data = null;
+                        }
+                    }
 
+                    if (data != null)
+                    {
                         // 处理数据
                         ProcessData(data);
                     }
                     else
                     {
-                        // 如果队列为空，稍作等待
-                        //PendingNum = 0;
-                        await Task.Delay(50, cancellationToken);
+                        // 如果队列为空，稍作等待，避免频繁检查队列是否为空
+                        await Task.Delay(100, cancellationToken);
                     }
                 }
             }
@@ -908,14 +918,14 @@ namespace ZQcom.ViewModels
             }
         }
 
-        private void OnQueueSizeUpdateTimerTick(object sender, EventArgs e)
-        {
-            // 无论是否使用异步UI线程，接收数据方面都不会有多少提升，但不使用的话此处观感上会更流畅
-            //Application.Current.Dispatcher.InvokeAsync(() =>
-            //{
-                PendingNum = _dataQueue.Count;
-            //});
-        }
+        //private void OnQueueSizeUpdateTimerTick(object sender, EventArgs e)
+        //{
+        //    // 无论是否使用异步UI线程，接收数据方面都不会有多少提升，但不使用的话此处观感上会更流畅
+        //    //Application.Current.Dispatcher.InvokeAsync(() =>
+        //    //{
+        //        PendingNum = _dataQueue.Count;
+        //    //});
+        //}
 
         // 生成日志文件名
         private string GenerateLogFileName()
