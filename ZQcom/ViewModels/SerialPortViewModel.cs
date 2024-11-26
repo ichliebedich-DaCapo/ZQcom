@@ -623,7 +623,8 @@ namespace ZQcom.ViewModels
                 {
                     data = FormatData(data);
                     LogMessage($">> {data}");
-                    _logQueue.Enqueue(data); // 将格式化后的数据放入日志队列
+                    if(IsProcessData)
+                        _logQueue.Enqueue(data); // 将格式化后的数据放入日志队列
                 }
                 else
                 {
@@ -795,29 +796,34 @@ namespace ZQcom.ViewModels
                     float floatValue=0.0f;
 
 
-                    // 检查数据长度
-                    // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
-                    if(length==-1)
-                    {
-                        processedData = hexDataWithoutSpaces; 
-                    }
-                    else
-                    {
+                // 检查数据长度
+                // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
+                if (length == -1)
+                {
+                    processedData = hexDataWithoutSpaces;
+                }
+                else
+                {
+                    if (!IsForceProcess)
                         if (startIndex + length > hexDataWithoutSpaces.Length)
                         {
                             MessageBox.Show("数据长度不足，无法处理！");
                             IsProcessData = false; // 关闭处理数据
                             return;
                         }
-                        // 截取数据,并发送
-                        processedData = hexDataWithoutSpaces.Substring(startIndex, length);
-                    }
-                    ExtractedDataMessage(processedData);
+                        else
+                        {
+                            ConvertedDataMessage("无法转换");
+                        }
+                    // 截取数据,并发送
+                    processedData = hexDataWithoutSpaces.Substring(startIndex, length);
+                }
+                ExtractedDataMessage(processedData);
 
 
 
-                    // 由于前面已经经过是否显示16进制处理过了，所以此时一定是16进制字符串       
-                    if (IsHexDisplay)
+                // 由于前面已经经过是否显示16进制处理过了，所以此时一定是16进制字符串       
+                if (IsHexDisplay)
                     {
                         // 将16进制字符串转换为字节数组
                         byte[] bytes = Convert.FromHexString(processedData);
