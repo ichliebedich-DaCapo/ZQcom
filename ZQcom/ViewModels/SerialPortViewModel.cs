@@ -77,7 +77,9 @@ namespace ZQcom.ViewModels
         private Task? _processingTask;
         private Task? _logProcessingTask;
 
-
+        private Thread _readTaskThread; // 用于保存读取任务的线程
+        private bool _isRunning = true;
+        private AutoResetEvent _resetEvent = new AutoResetEvent(false);
 
         // 事件
         public event EventHandler<string>? DataReceived;            // 数据接收事件
@@ -111,9 +113,12 @@ namespace ZQcom.ViewModels
             //发布事件
             _eventAggregator = eventAggregator;
 
-            //TextEditor.AppendText("{ffff");
 
             // --------------线程相关--------------
+            _isRunning = true;
+            _readTaskThread = new Thread(ReadTask);
+            _readTaskThread.IsBackground = true; // 设置为后台线程
+
 
             // --------------定时器相关-------------- 
             // 初始化定时器，每500毫秒更新一次队列大小
@@ -126,7 +131,7 @@ namespace ZQcom.ViewModels
         }
 
         // ------------------------组件映射------------------------------
-        public TextEditor TextEditor { get; set; }
+        public TextEditor? TextEditor { get; set; }
 
 
 
@@ -509,6 +514,9 @@ namespace ZQcom.ViewModels
 
                     // 启动定时器
                     //_queueSizeUpdateTimer.Start();
+                    // 【调试】多线程
+                    _isRunning = true;
+                    _readTaskThread.Start();
 
                     // 【生产者-消费者模式】启动数据处理任务
                     _processingCancellationTokenSource = new CancellationTokenSource();
@@ -528,6 +536,15 @@ namespace ZQcom.ViewModels
                 _serialPortService.ClosePort(_serialPort);
                 _serialPort = null;
                 OpenCloseButtonText = "打开串口";
+
+                // 【调试】多线程
+                _isRunning = false;
+                _resetEvent.Set(); // 确保读取任务退出
+                if (_readTaskThread != null && _readTaskThread.IsAlive)
+                {
+                    _readTaskThread.Join(); // 等待线程结束
+                }
+
 
                 // 【生产者-消费者模式】停止数据处理任务
                 if (_processingCancellationTokenSource != null && (_processingTask != null || _logProcessingTask != null))
@@ -651,33 +668,74 @@ namespace ZQcom.ViewModels
 
                 string data = sp.ReadExisting();
                 _receiveQueue.Enqueue(data); // 将接收到的数据放入接收队列
-                _queueSemaphore.Release(); // 信号量释放，通知有新数据
+                //_queueSemaphore.Release(); // 信号量释放，通知有新数据
+                _resetEvent.Set(); // 通知读取任务开始处理数据
             }
         }
 
 
         // 日志队列处理
-        private int count = 0;
         private async Task ProcessLogQueueAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                //await _queueSemaphore.WaitAsync(cancellationToken); // 等待信号量
+                await _queueSemaphore.WaitAsync(cancellationToken); // 等待信号量
 
-                //if (_receiveQueue.TryDequeue(out var data))
-                //{
-                //    data = FormatData(data);
-                //    Application.Current.Dispatcher.Invoke(() =>
-                //    {
-                //        LogMessage($">> {data}");
-                //    });
-                //    // 将格式化后的数据放入日志队列
-                //    if (IsProcessData)
-                //        _logQueue.Enqueue(data);
-                //}
-                LogMessage($">> {count++}");
+                if (_receiveQueue.TryDequeue(out var data))
+                {
+                    data = FormatData(data);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        LogMessage($">> {data}");
+                        //TextEditor.AppendText($">> {data}");
+                    });
+                    // 将格式化后的数据放入日志队列
+                    if (IsProcessData)
+                        _logQueue.Enqueue(data);
+                }
+
             }
         }
+
+        // 读取任务
+        private void ReadTask()
+        {
+            while (_isRunning)
+            {
+                _resetEvent.WaitOne(); // 等待数据接收事件
+                if (!_isRunning)
+                    break;
+
+                List<string> allData = new List<string>();
+                while (true)
+                {
+                    if (!(_receiveQueue.TryDequeue(out var data)))
+                        break;
+
+                    allData.Add(data);
+
+                    if (allData.Count > 10240)
+                        break;
+
+                    Thread.Sleep(10); // 适当休眠，避免过度占用CPU
+                }
+
+                if (allData.Count > 0)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        foreach (var item in allData)
+                        {
+                            TextEditor?.AppendText($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]>> {item}");
+                        }
+                    });
+                }
+            }
+        }
+
+
+
+
         private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
         {
             try

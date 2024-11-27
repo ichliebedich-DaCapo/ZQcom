@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using ICSharpCode.AvalonEdit;
+using System.Windows;
 using System.Windows.Input;
 using ZQcom.ViewModels;
 
@@ -58,6 +59,12 @@ namespace ZQcom.Views
                 this.DragMove();
             }
         }
-        
+
+
+        // 接收数据框更新
+        private void TextBox_TextChanged(object sender, EventArgs e)
+        {
+            textEditor.ScrollToEnd();
+        }
     }
 }

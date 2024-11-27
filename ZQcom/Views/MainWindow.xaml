@@ -166,7 +166,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <avalonEdit:TextEditor  Name="textEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog" />
+                        <avalonEdit:TextEditor  Name="textEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
+                                                TextChanged="TextBox_TextChanged"/>
                         <!--<TextBox Name="TbxLog" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" 
                          Text="{Binding SerialPortViewModel.LogText, Mode=OneWay}" Grid.Row="0" 
                          ScrollViewer.VerticalScrollBarVisibility="Auto">
