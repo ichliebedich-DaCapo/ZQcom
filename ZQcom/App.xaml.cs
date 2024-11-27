@@ -9,7 +9,7 @@ namespace ZQcom
 {
     public partial class App : Application
     {
-        private MainViewModel _mainViewModel;
+    
         public static ResourceDictionary DefaultTheme { get; private set; }
         public static ResourceDictionary PurpleTheme { get; private set; }
         protected override void OnStartup(StartupEventArgs e)
@@ -17,20 +17,16 @@ namespace ZQcom
             base.OnStartup(e);
 
             // 初始化主视图模型
-            _mainViewModel = new MainViewModel();
 
             // 设置主窗口
-            MainWindow = new MainWindow
-            {
-                DataContext = _mainViewModel
-            };
+            MainWindow = new MainWindow();
             MainWindow.Show();
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
             // 默认关闭窗口时，保存日志
-            _mainViewModel.SerialPortViewModel.SaveLog();
+            //_mainViewModel.SerialPortViewModel.SaveLog();
             base.OnExit(e);
         }
 

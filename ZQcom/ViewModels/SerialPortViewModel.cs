@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.Collections.Concurrent;
 using ZQcom.Helpers;
 using System.Windows.Threading;
+using ICSharpCode.AvalonEdit;
 
 /// 编程守则：
 /// ①UI更新：一定使用UI异步更新，不然会严重阻塞主线程
@@ -110,6 +111,7 @@ namespace ZQcom.ViewModels
             //发布事件
             _eventAggregator = eventAggregator;
 
+            //TextEditor.AppendText("{ffff");
 
             // --------------线程相关--------------
 
@@ -122,6 +124,11 @@ namespace ZQcom.ViewModels
             //_queueSizeUpdateTimer.Tick += OnQueueSizeUpdateTimerTick;
 
         }
+
+        // ------------------------组件映射------------------------------
+        public TextEditor TextEditor { get; set; }
+
+
 
 
         // ------------------------数据绑定------------------------------
