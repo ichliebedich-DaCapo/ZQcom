@@ -57,13 +57,14 @@ namespace ZQcom.ViewModels
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
         //private bool _isLogSave=false;                              // 是否保存日志
-        private bool _isDisableTimestamp=false;                     // 是否禁用时间戳
+        private bool _isDisableTimestamp = false;                     // 是否禁用时间戳
         private bool _isForceProcess = false;                       // 是否强制处理数据
         private int _receiveBytes = 0;                              // 接收到的字节数
         private int _sendBytes = 0;                                 // 发送的字节数
         private int _receiveNum = 0;                                // 接收到的数据包数量
         private int _sendNum = 0;                                   // 发送的数据包数量
         private int _pendingQueueSize = 0;                          // 待处理的队列大小
+        private bool _isEnableChart = false;                                // 启用图表,默认不可视
 
         // 定时器相关
         //private readonly DispatcherTimer _queueSizeUpdateTimer;
@@ -125,7 +126,7 @@ namespace ZQcom.ViewModels
 
         // ------------------------数据绑定------------------------------
         // 可用的串口列表
-        public ObservableCollection<string>? AvailablePorts { get; set; } 
+        public ObservableCollection<string>? AvailablePorts { get; set; }
         public ObservableCollection<string> SerialPortNames { get; set; }
         public string SelectedSerialPort
         {
@@ -430,6 +431,35 @@ namespace ZQcom.ViewModels
         }
 
 
+        // 图表可视属性
+        public System.Windows.Visibility ChartVisibility
+        {
+            get
+            {
+                if (IsEnableChart)
+                {
+                    return System.Windows.Visibility.Visible;
+                }
+                else
+                {
+                    return System.Windows.Visibility.Hidden;
+                }
+            }
+        }
+
+
+        // 启用图表
+        public bool IsEnableChart
+        {
+            get => _isEnableChart;
+            set
+            {
+                _isEnableChart = value;
+                RaisePropertyChanged(nameof(IsEnableChart));
+                RaisePropertyChanged(nameof(ChartVisibility));
+            }
+        }
+
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
         public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
@@ -560,7 +590,7 @@ namespace ZQcom.ViewModels
                         {
                             SendBytes += hexData.Length;
                         });
-                       
+
                     }
                     else
                     {
@@ -574,7 +604,7 @@ namespace ZQcom.ViewModels
                 {
                     // 16进制的换行我还没做，原因很简单，我暂时没有遇到发送16进制还需要加上换行的需求
                     data = data + (AddNewline ? "\r\n" : "");
-                    _serialPortService.SendData(_serialPort, data );
+                    _serialPortService.SendData(_serialPort, data);
 
                     // 【UI更新】进行字节统计
                     // 将字符串转换为字节数据（假设使用ASCII编码，后续可能会添加多种编码方式）
@@ -584,8 +614,8 @@ namespace ZQcom.ViewModels
                     {
                         SendBytes += buffer.Length;
                     });
-                    
-                    
+
+
                 }
 
                 // 【UI更新】进行数量统计
@@ -623,8 +653,10 @@ namespace ZQcom.ViewModels
                 {
                     data = FormatData(data);
                     LogMessage($">> {data}");
-                    if(IsProcessData)
-                        _logQueue.Enqueue(data); // 将格式化后的数据放入日志队列
+
+                    // 将格式化后的数据放入日志队列
+                    if (IsProcessData)
+                        _logQueue.Enqueue(data);
                 }
                 else
                 {
@@ -774,26 +806,26 @@ namespace ZQcom.ViewModels
         // 开启16进制显示时会以16进制数据处理，不开启则以普通字符串处理
         private void ProcessData(string data)
         {
-                try
+            try
+            {
+                // 获取数据起始位置和长度
+                int startIndex = StartPosition - 1; // 起始位置从1开始
+                int length = Length;
+
+                // 检查起始位置
+                if (StartPosition <= 0 && length != -1)
                 {
-                    // 获取数据起始位置和长度
-                    int startIndex = StartPosition - 1; // 起始位置从1开始
-                    int length = Length;
+                    MessageBox.Show("起始位置不能小于等于0，请重新输入！");
+                    IsProcessData = false; // 关闭处理数据
+                    return;
+                }
 
-                    // 检查起始位置
-                    if (StartPosition <= 0 && length!=-1)
-                    {
-                        MessageBox.Show("起始位置不能小于等于0，请重新输入！");
-                        IsProcessData = false; // 关闭处理数据
-                        return;
-                    }
-
-                    // ----根据是否发送16进制数据进行不同处理----
-                    string processedData;
-                    // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
-                    string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
-                    // 最终转换的浮点数据,默认为0
-                    float floatValue=0.0f;
+                // ----根据是否发送16进制数据进行不同处理----
+                string processedData;
+                // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
+                string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
+                // 最终转换的浮点数据,默认为0
+                float floatValue = 0.0f;
 
 
                 // 检查数据长度
@@ -807,8 +839,15 @@ namespace ZQcom.ViewModels
                     if (!IsForceProcess)
                         if (startIndex + length > hexDataWithoutSpaces.Length)
                         {
-                            MessageBox.Show("数据长度不足，无法处理！");
-                            IsProcessData = false; // 关闭处理数据
+                            if (!IsForceProcess)
+                            {
+                                MessageBox.Show("数据长度不足，无法处理！");
+                                IsProcessData = false; // 关闭处理数据
+                            }
+                            else
+                            {
+                                ConvertedDataMessage("无法转换");
+                            }
                             return;
                         }
                         else
@@ -824,43 +863,43 @@ namespace ZQcom.ViewModels
 
                 // 由于前面已经经过是否显示16进制处理过了，所以此时一定是16进制字符串       
                 if (IsHexDisplay)
-                    {
-                        // 将16进制字符串转换为字节数组
-                        byte[] bytes = Convert.FromHexString(processedData);
+                {
+                    // 将16进制字符串转换为字节数组
+                    byte[] bytes = Convert.FromHexString(processedData);
 
-                        // 检查字节数组长度是否为4
-                        if (bytes.Length != 4)
+                    // 检查字节数组长度是否为4
+                    if (bytes.Length != 4)
+                    {
+                        // 错误情况下的处理
+                        if (!IsForceProcess)
                         {
-                            // 错误情况下的处理
-                            if (!IsForceProcess)
-                            {
-                                MessageBox.Show("十六进制字符串长度不正确，无法转换为32位浮点数！");
-                                IsProcessData = false; // 关闭处理数据
-                                return;
-                            }
-                            else
-                            {
-                                ConvertedDataMessage("长度不足");
-                            }
+                            MessageBox.Show("十六进制字符串长度不正确，无法转换为32位浮点数！");
+                            IsProcessData = false; // 关闭处理数据
+                            return;
                         }
                         else
                         {
-       
-
-                            // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
-                            if (BitConverter.IsLittleEndian)
-                            {
-                                Array.Reverse(bytes);
-                            }
-
-                            // 将字节数组转换为32位浮点数
-                            floatValue = BitConverter.ToSingle(bytes, 0);
-                            ConvertedDataMessage(floatValue.ToString());
+                            ConvertedDataMessage("长度不足");
                         }
-
                     }
                     else
                     {
+
+
+                        // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
+                        if (BitConverter.IsLittleEndian)
+                        {
+                            Array.Reverse(bytes);
+                        }
+
+                        // 将字节数组转换为32位浮点数
+                        floatValue = BitConverter.ToSingle(bytes, 0);
+                        ConvertedDataMessage(floatValue.ToString());
+                    }
+
+                }
+                else
+                {
                     // 尝试直接将字符串转换为32位浮点数
                     //【隐患】没有进行异常处理，前面字符串确实会黏连，这就非常奇怪。想要解决也很简单，来个图表直连
                     if (float.TryParse(processedData, out float result))
@@ -883,15 +922,17 @@ namespace ZQcom.ViewModels
                     }
                 }
 
-                    // 发布事件
+                // 发布事件
+
+                if (IsEnableChart)
                     _eventAggregator.GetEvent<DataReceivedEvent>().Publish(floatValue);
-                }
-                catch (FormatException ex)
-                {
-                    // 其他异常
-                        MessageBox.Show($"处理数据发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                        IsProcessData = false;// 关闭处理数据
-                }
+            }
+            catch (FormatException ex)
+            {
+                // 其他异常
+                MessageBox.Show($"处理数据发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                IsProcessData = false;// 关闭处理数据
+            }
         }
 
 

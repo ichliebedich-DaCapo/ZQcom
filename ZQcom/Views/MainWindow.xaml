@@ -230,7 +230,7 @@
                 <!-- 图表视图 -->
                 <DockPanel Grid.Column="1" LastChildFill="True" Margin="10">
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                        <CheckBox Content="开启图表" IsChecked="{Binding ChartViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
+                        <CheckBox Content="开启图表" IsChecked="{Binding SerialPortViewModel.IsEnableChart}" Margin="0,0,10,0" Height="14" />
                         <CheckBox Content="禁用动画" IsChecked="{Binding ChartViewModel.IsDisableAnimation}" Margin="0,0,10,0" Height="14" />
                         <TextBlock Text="最大显示点数:" VerticalAlignment="Center" Margin="0,0,10,0" />
                         <TextBox Name="TbxMaxDisplayPoints" Text="{Binding ChartViewModel.MaxDisplayPoints}" Width="60" Margin="0,0,10,0" />
@@ -248,7 +248,7 @@
                         <!--图表显示区域-->
                         <lvc:CartesianChart Series="{Binding ChartViewModel.ChartModel.Series}" 
                      DisableAnimations="{Binding ChartViewModel.DisableAnimation}"
-                     Visibility="{Binding ChartViewModel.ChartVisibility}">
+                     Visibility="{Binding SerialPortViewModel.ChartVisibility}">
                             <lvc:CartesianChart.AxisX>
                                 <!--暂时先屈服(X_X),这个X轴刻度太难搞了，从零开始就从零开始吧-->
                                 <lvc:Axis MinValue="0" MaxValue="{Binding ChartViewModel.AxisXMaxValue}"/>

@@ -19,7 +19,6 @@ namespace ZQcom.ViewModels
     public class ChartViewModel : ViewModelBase
     {
         private ChartModel _chartModel;                                     // 图表数据
-        private bool _isEnableChart = false;                                // 启用图表,默认不可视
         private int _maxChartPoints = 100;                                  // 图表最大数据点数
         private bool _isDisableAnimation = false;                           // 禁用动画
         private List<double> _dataDisplayChartValues = new List<double>();  // 数据显示图表数据
@@ -48,32 +47,8 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 图表可视属性
-        public System.Windows.Visibility ChartVisibility
-        {
-            get
-            {
-                if (IsEnableChart)
-                {
-                    return System.Windows.Visibility.Visible;
-                }
-                else
-                {
-                    return System.Windows.Visibility.Hidden;
-                }
-            }
-        }
-        // 启用图表
-        public bool IsEnableChart
-        {
-            get => _isEnableChart;
-            set
-            {
-                _isEnableChart = value;
-                RaisePropertyChanged(nameof(IsEnableChart));
-                RaisePropertyChanged(nameof(ChartVisibility));
-            }
-        }
+
+
 
         // 图表最大数据点数属性
         public int AxisXMaxValue
@@ -137,21 +112,17 @@ namespace ZQcom.ViewModels
         // 添加数据点
         public void AddDataPoint(double value)
         {
-            if (IsEnableChart)
-            {
-                // 由于起始索引为0，索引没有用">="
-                if (ChartModel.GetDataPointCount() > AxisXMaxValue)
-                    RemoveLastDataPoint();// 删除最后一条数据
-                ChartModel.AddDataPoint(value);
-            }
+
+            // 由于起始索引为0，索引没有用">="
+            if (ChartModel.GetDataPointCount() > AxisXMaxValue)
+                RemoveLastDataPoint();// 删除最后一条数据
+            ChartModel.AddDataPoint(value);
+
         }
         // 删除最后一条数据
         public void RemoveLastDataPoint()
         {
-            if(IsEnableChart)
-            {
-                ChartModel.RemoveDataPoint(0);
-            }
+            ChartModel.RemoveDataPoint(0);
         }
 
 
