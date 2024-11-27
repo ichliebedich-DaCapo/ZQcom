@@ -632,36 +632,43 @@ namespace ZQcom.ViewModels
         }
 
         // 接收打印数据
+        private SemaphoreSlim _queueSemaphore = new SemaphoreSlim(0);
+
+        // 在OnDataReceived中
         private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
         {
             if (sender is SerialPort sp)
             {
-                ReceiveBytes += sp.BytesToRead;
-                ++ReceiveNum;
+                //ReceiveBytes += sp.BytesToRead;
+                //++ReceiveNum;
 
                 string data = sp.ReadExisting();
                 _receiveQueue.Enqueue(data); // 将接收到的数据放入接收队列
+                _queueSemaphore.Release(); // 信号量释放，通知有新数据
             }
         }
 
 
+        // 日志队列处理
+        private int count = 0;
         private async Task ProcessLogQueueAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (_receiveQueue.TryDequeue(out var data))
-                {
-                    data = FormatData(data);
-                    LogMessage($">> {data}");
+                //await _queueSemaphore.WaitAsync(cancellationToken); // 等待信号量
 
-                    // 将格式化后的数据放入日志队列
-                    if (IsProcessData)
-                        _logQueue.Enqueue(data);
-                }
-                else
-                {
-                    await Task.Delay(100, cancellationToken); // 队列为空时等待
-                }
+                //if (_receiveQueue.TryDequeue(out var data))
+                //{
+                //    data = FormatData(data);
+                //    Application.Current.Dispatcher.Invoke(() =>
+                //    {
+                //        LogMessage($">> {data}");
+                //    });
+                //    // 将格式化后的数据放入日志队列
+                //    if (IsProcessData)
+                //        _logQueue.Enqueue(data);
+                //}
+                LogMessage($">> {count++}");
             }
         }
         private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
