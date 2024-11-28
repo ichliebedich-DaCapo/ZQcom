@@ -127,6 +127,7 @@ namespace ZQcom.ViewModels
             //    Interval = TimeSpan.FromMilliseconds(400)
             //};
             //_queueSizeUpdateTimer.Tick += OnQueueSizeUpdateTimerTick;
+            _updateUITimer = new Timer(UpdateUI, null, 0, 300); // 每秒更新一次
 
         }
 
@@ -538,7 +539,8 @@ namespace ZQcom.ViewModels
                 OpenCloseButtonText = "打开串口";
 
                 // 【调试】多线程
-                _isRunning = false;
+                //_isRunning = false;
+                //_readTaskThread.
                 _resetEvent.Set(); // 确保读取任务退出
                 if (_readTaskThread != null && _readTaskThread.IsAlive)
                 {
@@ -657,22 +659,40 @@ namespace ZQcom.ViewModels
 
         // 接收打印数据
         private SemaphoreSlim _queueSemaphore = new SemaphoreSlim(0);
-
+        private int _receiveCount = 0; // 后台计数器
+        private readonly object _syncLock = new object(); // 用于同步访问_count
         // 在OnDataReceived中
+        private Timer _updateUITimer; // 每秒更新一次
+        private async void UpdateUI(object state)
+        {
+            int count;
+            lock (_syncLock)
+            {
+                count = _receiveCount;
+                _receiveCount = 0; // 重置后台计数器
+            }
+
+            // 更新UI上的ReceiveNum
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
+            });
+        }
         private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
         {
             if (sender is SerialPort sp)
             {
                 //ReceiveBytes += sp.BytesToRead;
                 //++ReceiveNum;
-
-                string data = sp.ReadExisting();
-                _receiveQueue.Enqueue(data); // 将接收到的数据放入接收队列
+                lock (_syncLock)
+                {
+                    ++_receiveCount; // 增加后台计数器
+                }
                 //_queueSemaphore.Release(); // 信号量释放，通知有新数据
                 _resetEvent.Set(); // 通知读取任务开始处理数据
             }
         }
-
+        
 
         // 日志队列处理
         private async Task ProcessLogQueueAsync(CancellationToken cancellationToken)
@@ -698,40 +718,123 @@ namespace ZQcom.ViewModels
         }
 
         // 读取任务
-        private void ReadTask()
+        public async void ReadTask()
         {
-            while (_isRunning)
+            const int MaxDataSize = 512;
+            const int BatchSize = 1024; // 批量读取大小
+
+            var allData = new List<byte>();
+            while (true)
             {
                 _resetEvent.WaitOne(); // 等待数据接收事件
-                if (!_isRunning)
-                    break;
 
-                List<string> allData = new List<string>();
-                while (true)
+                try
                 {
-                    if (!(_receiveQueue.TryDequeue(out var data)))
-                        break;
+                    while (allData.Count < MaxDataSize && _serialPort.BytesToRead > 0)
+                    {
+                        var bytesToRead = Math.Min(_serialPort.BytesToRead, BatchSize);
+                        var buffer = new byte[bytesToRead];
+                        _serialPort.Read(buffer, 0, bytesToRead);
+                        allData.AddRange(buffer);
 
-                    allData.Add(data);
+                        if (allData.Count >= MaxDataSize) break;
 
-                    if (allData.Count > 10240)
-                        break;
-
-                    Thread.Sleep(10); // 适当休眠，避免过度占用CPU
+                        await Task.Delay(10); // 防止CPU占用过高，使用异步延迟
+                    }
+                }
+                catch
+                {
+                    // 处理异常
+                    allData.Clear();
+                    continue;
                 }
 
                 if (allData.Count > 0)
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        foreach (var item in allData)
-                        {
-                            TextEditor?.AppendText($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]>> {item}");
-                        }
-                    });
+                    await LogMessageAsync(_serialPort.Encoding.GetString(allData.ToArray()), DateTime.Now.ToString());
+                    allData.Clear(); // 清空数据列表
                 }
             }
         }
+
+        private async Task LogMessageAsync(string inputData, string timestamp)
+        {
+            var sb = new StringBuilder();
+            sb.Append($"[{timestamp}] ");
+            var value = inputData.Replace("\0", "\\0");
+            //// 使用正则表达式替换换行符，并添加时间戳
+            var logEntry = Regex.Replace(value, @"(\r\n|\r|\n)", $"\r\n[{timestamp}]>> ");
+            sb.Append(logEntry);
+
+            // 异步更新UI
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                TextEditor?.AppendText(sb.ToString());
+            });
+        }
+        //private void ReadTask()
+        //{
+        //    List<string> allData = new List<string>();
+        //    while (_isRunning)
+        //    {
+        //        _resetEvent.WaitOne(); // 等待数据接收事件
+
+
+        //        while (true)
+        //        {
+        //            // 队列为空或者超过1024个就退出打印数据
+        //            if (!(_receiveQueue.TryDequeue(out var data)))
+        //                break;
+
+        //            allData.Add(data);
+
+        //            if (allData.Count > 512)
+        //                break;
+
+        //            Thread.Sleep(10); // 适当休眠，避免过度占用CPU
+        //        }
+
+        //        //if (allData.Count > 0)
+        //        //{
+        //        //    RecvBuffer.Clear();
+        //        //    StringBuilder sb = new StringBuilder();
+        //        //    sb.Append(DateTime.Now);
+        //        //    sb.Append(">>");
+        //        //    Application.Current.Dispatcher.Invoke(() =>
+        //        //    {
+        //        //        ////string value = allData.ToArray();
+        //        //        //var dateTime = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
+        //        //        foreach (var item in allData)
+        //        //        {
+        //        //            RecvBuffer.Append(sb);
+        //        //            RecvBuffer.Append(item);
+        //        //        }
+        //        //        TextEditor?.AppendText(RecvBuffer.ToString());
+        //        //    });
+        //        //}
+
+        //        if (allData.Count > 0)
+        //        {
+        //            RecvBuffer.Clear();
+        //            StringBuilder sb = new StringBuilder();
+        //            sb.Append(DateTime.Now);
+        //            sb.Append(">>");
+        //            Application.Current.Dispatcher.Invoke(() =>
+        //            {
+
+        //                foreach (var val in allData)
+        //                {
+        //                    RecvBuffer.Append(sb);
+        //                    var temp= val.Trim();
+        //                    //val.Replace("\0", "\\0")
+        //                    RecvBuffer.Append(val.TrimEnd('\0'));
+        //                }
+        //                TextEditor?.AppendText(RecvBuffer.ToString());
+        //            });
+        //        }
+        //    }
+        //}
+
 
 
 
