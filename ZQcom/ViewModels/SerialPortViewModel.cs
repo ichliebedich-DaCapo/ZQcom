@@ -754,7 +754,7 @@ namespace ZQcom.ViewModels
                 if (_smallBatchDataQueue.TryDequeue(out string data))
                 {
                     // 打印数据
-                    LogMessageSmallBatch(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                    LogMessageSmallBatch(ref data);
                 }
                 else
                 {
@@ -764,14 +764,12 @@ namespace ZQcom.ViewModels
             }
         }
         private StringBuilder _logBuffer = new StringBuilder(); // 用于累积日志数据
-        private void LogMessageSmallBatch(string inputData, string timestamp)
+        private void LogMessageSmallBatch(ref string inputData)
         {
-            var value = inputData.Replace("\0", "\\0");
-
             _logBuffer.Append('[');
-            _logBuffer.Append(timestamp);
+            _logBuffer.Append($"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
             _logBuffer.Append("]>> ");
-            _logBuffer.Append(value);
+            _logBuffer.Append(inputData);
             _logBuffer.AppendLine();
         }
 
