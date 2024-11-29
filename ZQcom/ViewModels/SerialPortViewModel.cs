@@ -120,7 +120,6 @@ namespace ZQcom.ViewModels
 
             // --------------定时器相关-------------- 
             _updateReceiveNumTimer = new Timer(UpdateReceiveNum, null, 0, 200); // 每0.1秒更新一次
-
         }
 
         // ------------------------组件映射------------------------------
@@ -494,6 +493,7 @@ namespace ZQcom.ViewModels
             }
         }
 
+
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
         public ICommand ToggleSerialPortCommand => new RelayCommand(ToggleSerialPort);
@@ -677,10 +677,11 @@ namespace ZQcom.ViewModels
         // 接收打印数据
         private SemaphoreSlim _queueSemaphore = new SemaphoreSlim(0);
 
+        private SemaphoreSlim _dataAvailableSignal = new SemaphoreSlim(0); // 信号量
         private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Increment(ref _receiveCount); // 增加后台计数器
-            _resetEvent.Set(); // 通知读取任务开始处理数据
+            _dataAvailableSignal.Release(); // 通知读取任务开始处理数据
         }
 
 
@@ -707,7 +708,7 @@ namespace ZQcom.ViewModels
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 使用异步等待来避免阻塞
-                await Task.Run(() => _resetEvent.WaitOne(), cancellationToken);
+                await _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
                 try
                 {
                     while (allData.Count < MaxDataSize && _serialPort.BytesToRead > 0)
@@ -1135,6 +1136,9 @@ namespace ZQcom.ViewModels
                 ConvertedText = string.Empty;
                 _receiveQueue.Clear();//清空接收队列
                 _logQueue.Clear();
+
+                // 清除日志框
+                TextEditor?.Clear();
 
                 // 清除接收发送数据统计
                 ReceiveBytes = 0;
