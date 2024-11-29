@@ -62,7 +62,7 @@ namespace ZQcom.ViewModels
         private bool _isEnableChart = false;                        // 启用图表,默认不可视
 
         // 定时器相关
-        private Timer _updateReceiveNumTimer; // 
+        private readonly Timer _updateReceiveNumTimer; // 
 
         // 线程相关
         private CancellationTokenSource? _cancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
