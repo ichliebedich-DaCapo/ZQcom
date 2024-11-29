@@ -537,7 +537,7 @@ namespace ZQcom.ViewModels
                     // 启动定时器
                     //_queueSizeUpdateTimer.Start();
                     // 【调试】多线程
-                    StartReadingAsync();
+                   await StartReadingAsync();
 
                     //// 【生产者-消费者模式】启动数据处理任务
                     //_processingCancellationTokenSource = new CancellationTokenSource();
@@ -705,6 +705,7 @@ namespace ZQcom.ViewModels
             const int BatchSize = 1024; // 批量读取大小
 
             var allData = new List<byte>();
+            StringBuilder sbTemp = new StringBuilder();
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 使用异步等待来避免阻塞
@@ -715,11 +716,14 @@ namespace ZQcom.ViewModels
                     {
                         var bytesToRead = Math.Min(_serialPort.BytesToRead, BatchSize);
                         var buffer = new byte[bytesToRead];
-                        _serialPort.Read(buffer, 0, bytesToRead);
-                        allData.AddRange(buffer);
+                        //_serialPort.Read(buffer, 0, bytesToRead);
+                        //allData.AddRange(buffer);
+
 
                         // 统计字节数
                         Interlocked.Add(ref _receiveBytes, bytesToRead);
+
+                        sbTemp.Append(_serialPort.ReadExisting());
 
                         if (allData.Count >= MaxDataSize) break;
 
@@ -738,10 +742,17 @@ namespace ZQcom.ViewModels
                     continue;
                 }
 
-                if (allData.Count > 0)
+                //if (allData.Count > 0)
+                //{
+                //    await LogMessageAsync(_serialPort.Encoding.GetString(allData.ToArray()), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                //    allData.Clear(); // 清空数据列表
+                //}
+                if (sbTemp.Length > 0)
                 {
-                    await LogMessageAsync(_serialPort.Encoding.GetString(allData.ToArray()), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-                    allData.Clear(); // 清空数据列表
+                    //await LogMessageAsync(_serialPort.Encoding.GetString(allData.ToArray()), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                    //allData.Clear(); // 清空数据列表
+                    await LogMessageAsync(sbTemp.ToString(), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                    sbTemp.Clear(); // 清空数据列表
                 }
             }
         }
