@@ -769,8 +769,6 @@ namespace ZQcom.ViewModels
         }
         private async Task ProcessDataAsync(CancellationToken cancellationToken)
         {
-            var processedData = new List<string>();
-
             while (!cancellationToken.IsCancellationRequested || _dataToProcessQueue.Count > 0)
             {
                 if (_dataToProcessQueue.TryDequeue(out string data))
@@ -783,23 +781,14 @@ namespace ZQcom.ViewModels
                         // 转换为浮点数
                         if (float.TryParse(cleanedData, out float result))
                         {
-                            processedData.Add(result.ToString());
+                            _processedDataBuffer.Append(result.ToString());
+                            _processedDataBuffer.AppendLine();// 添加换行符
                         }
                     }
                     catch (Exception ex)
                     {
                         // 处理异常
                         MessageBox.Show("数据转换失败：" + ex.Message);
-                    }
-
-                    // 每处理10条数据或队列为空时更新UI
-                    if (processedData.Count >= 10 || _dataToProcessQueue.Count == 0)
-                    {
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
-                        {
-                            ConvertedText += string.Join(Environment.NewLine, processedData) + Environment.NewLine;
-                            processedData.Clear();
-                        });
                     }
                 }
                 else
@@ -808,17 +797,11 @@ namespace ZQcom.ViewModels
                     await Task.Delay(10, cancellationToken);
                 }
             }
-
-            // 处理剩余的数据
-            if (processedData.Count > 0)
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ConvertedText += string.Join(Environment.NewLine, processedData) + Environment.NewLine;
-                });
-            }
         }
 
+
+        // 用于累积数据处理结果
+        private StringBuilder _processedDataBuffer = new StringBuilder();
         private StringBuilder _logBuffer = new StringBuilder(); // 用于累积日志数据
         private void LogMessageSmallBatch(ref string inputData)
         {
@@ -855,7 +838,21 @@ namespace ZQcom.ViewModels
                     _logBuffer.Clear(); // 清空缓冲区
                 });
             }
+
+            // 更新数据处理结果
+            if (_processedDataBuffer.Length > 0)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ConvertedText += _processedDataBuffer.ToString();
+                    _processedDataBuffer.Clear();
+                });
+                
+            }
+
         }
+
+
 
 
         private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
