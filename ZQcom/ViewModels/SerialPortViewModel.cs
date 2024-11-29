@@ -684,7 +684,6 @@ namespace ZQcom.ViewModels
             _dataAvailableSignal.Release(); // 通知读取任务开始处理数据
         }
 
-
         private int _receiveCount = 0; // 后台计数器
         private async void UpdateReceiveNum(object state)
         {
@@ -701,33 +700,31 @@ namespace ZQcom.ViewModels
         // 读取任务
         public async Task ReadTask(CancellationToken cancellationToken)
         {
-            const int MaxDataSize = 512;
             const int BatchSize = 1024; // 批量读取大小
 
-            var allData = new List<byte>();
-            StringBuilder sbTemp = new StringBuilder();
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 使用异步等待来避免阻塞
                 await _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
                 try
                 {
-                    while (allData.Count < MaxDataSize && _serialPort.BytesToRead > 0)
+                    while (_serialPort.BytesToRead > 0)
                     {
-                        var bytesToRead = Math.Min(_serialPort.BytesToRead, BatchSize);
-                        var buffer = new byte[bytesToRead];
-                        //_serialPort.Read(buffer, 0, bytesToRead);
-                        //allData.AddRange(buffer);
+                        var buffer = new byte[Math.Min(_serialPort.BytesToRead, BatchSize)];
+                        int bytesRead = _serialPort.Read(buffer, 0, buffer.Length);
 
+                        if (bytesRead > 0)
+                        {
+                            // 统计字节数
+                            Interlocked.Add(ref _receiveBytes, bytesRead);
 
-                        // 统计字节数
-                        Interlocked.Add(ref _receiveBytes, bytesToRead);
+                            // 实时更新UI
+                            string data = _serialPort.Encoding.GetString(buffer, 0, bytesRead);
+                            await LogMessageAsync(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                        }
 
-                        sbTemp.Append(_serialPort.ReadExisting());
-
-                        if (allData.Count >= MaxDataSize) break;
-
-                        await Task.Delay(10, cancellationToken); // 防止CPU占用过高，使用异步延迟
+                        // 防止CPU占用过高，使用异步延迟
+                        await Task.Delay(10, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -738,21 +735,7 @@ namespace ZQcom.ViewModels
                 catch
                 {
                     // 处理异常
-                    allData.Clear();
                     continue;
-                }
-
-                //if (allData.Count > 0)
-                //{
-                //    await LogMessageAsync(_serialPort.Encoding.GetString(allData.ToArray()), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-                //    allData.Clear(); // 清空数据列表
-                //}
-                if (sbTemp.Length > 0)
-                {
-                    //await LogMessageAsync(_serialPort.Encoding.GetString(allData.ToArray()), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-                    //allData.Clear(); // 清空数据列表
-                    await LogMessageAsync(sbTemp.ToString(), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-                    sbTemp.Clear(); // 清空数据列表
                 }
             }
         }
@@ -760,7 +743,6 @@ namespace ZQcom.ViewModels
         private async Task LogMessageAsync(string inputData, string timestamp)
         {
             var sb = new StringBuilder();
-            sb.Append($"[{timestamp}]>> ");
             var value = inputData.Replace("\0", "\\0");
 
             // 使用正则表达式替换换行符，并添加时间戳
