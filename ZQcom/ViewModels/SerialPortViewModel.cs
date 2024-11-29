@@ -77,8 +77,11 @@ namespace ZQcom.ViewModels
 
 
         private ConcurrentQueue<string> _smallBatchDataQueue = new ConcurrentQueue<string>(); // 用于存储小批量数据的队列
+        private ConcurrentQueue<string> _dataToProcessQueue = new ConcurrentQueue<string>(); // 用于存储需要处理的数据
         private CancellationTokenSource ?_smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
+        private CancellationTokenSource? _dataProcessingCancellationTokenSource; // 用于取消数据处理任务
         private Task ?_smallBatchReceivingTask; // 小批量数据处理任务
+        private Task? _dataProcessingTask; // 数据处理任务
 
         // 事件
         public event EventHandler<string>? DataReceived;            // 数据接收事件
@@ -492,6 +495,10 @@ namespace ZQcom.ViewModels
             // 启动小批量数据处理任务
             _smallBatchCancellationTokenSource = new CancellationTokenSource();
             _smallBatchReceivingTask = ProcessSmallBatchDataAsync(_smallBatchCancellationTokenSource.Token);
+
+            // 启动数据处理任务
+            _dataProcessingCancellationTokenSource = new CancellationTokenSource();
+            _dataProcessingTask = ProcessDataAsync(_dataProcessingCancellationTokenSource.Token);
         }
 
         public void StopSmallBatchReceiving()
@@ -511,6 +518,20 @@ namespace ZQcom.ViewModels
             {
                 _smallBatchReceivingTask.Wait(); // 等待任务完成
                 _smallBatchReceivingTask = null;
+            }
+
+            // 取消数据处理任务
+            if (_dataProcessingCancellationTokenSource != null)
+            {
+                _dataProcessingCancellationTokenSource.Cancel();
+                _dataProcessingCancellationTokenSource.Dispose();
+                _dataProcessingCancellationTokenSource = null;
+            }
+
+            if (_dataProcessingTask != null)
+            {
+                _dataProcessingTask.Wait(); // 等待任务完成
+                _dataProcessingTask = null;
             }
         }
 
@@ -716,7 +737,8 @@ namespace ZQcom.ViewModels
             });
         }
 
-        // ----小批量数据接收----
+
+        /// -----------小批量数据接收---------
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Add(ref _backgroundReceiveBytes, _serialPort.BytesToRead);
@@ -733,6 +755,10 @@ namespace ZQcom.ViewModels
                 {
                     // 打印数据
                     LogMessageSmallBatch(ref data);
+
+                    // 将数据添加到处理队列中
+                    if(IsProcessData)
+                        _dataToProcessQueue.Enqueue(data);
                 }
                 else
                 {
@@ -741,6 +767,58 @@ namespace ZQcom.ViewModels
                 }
             }
         }
+        private async Task ProcessDataAsync(CancellationToken cancellationToken)
+        {
+            var processedData = new List<string>();
+
+            while (!cancellationToken.IsCancellationRequested || _dataToProcessQueue.Count > 0)
+            {
+                if (_dataToProcessQueue.TryDequeue(out string data))
+                {
+                    try
+                    {
+                        // 去掉 \r\n 和空格
+                        string cleanedData = data.Replace("\r", "").Replace("\n", "").Trim();
+
+                        // 转换为浮点数
+                        if (float.TryParse(cleanedData, out float result))
+                        {
+                            processedData.Add(result.ToString());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // 处理异常
+                        MessageBox.Show("数据转换失败：" + ex.Message);
+                    }
+
+                    // 每处理10条数据或队列为空时更新UI
+                    if (processedData.Count >= 10 || _dataToProcessQueue.Count == 0)
+                    {
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            ConvertedText += string.Join(Environment.NewLine, processedData) + Environment.NewLine;
+                            processedData.Clear();
+                        });
+                    }
+                }
+                else
+                {
+                    // 如果队列为空，等待一段时间再检查
+                    await Task.Delay(10, cancellationToken);
+                }
+            }
+
+            // 处理剩余的数据
+            if (processedData.Count > 0)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ConvertedText += string.Join(Environment.NewLine, processedData) + Environment.NewLine;
+                });
+            }
+        }
+
         private StringBuilder _logBuffer = new StringBuilder(); // 用于累积日志数据
         private void LogMessageSmallBatch(ref string inputData)
         {
@@ -752,7 +830,7 @@ namespace ZQcom.ViewModels
         }
 
 
-        // 刷新接收数据
+        // -------刷新接收数据-------
         private int _backgroundReceiveCount; // 后台计数器
         private int _backgroundReceiveBytes; // 后台计数器
         private async void UpdateReceive(object state)
