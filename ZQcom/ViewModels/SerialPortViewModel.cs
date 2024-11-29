@@ -720,12 +720,10 @@ namespace ZQcom.ViewModels
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Add(ref _backgroundReceiveBytes, _serialPort.BytesToRead);
+            Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
 
             // 直接读取所有可用数据并添加到队列中
             _smallBatchDataQueue.Enqueue(_serialPort.ReadExisting());
-
-            Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
-
         }
         private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
         {
@@ -735,7 +733,6 @@ namespace ZQcom.ViewModels
                 {
                     // 打印数据
                     LogMessageSmallBatch(ref data);
-                    
                 }
                 else
                 {
