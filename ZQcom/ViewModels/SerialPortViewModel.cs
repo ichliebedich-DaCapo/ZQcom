@@ -112,7 +112,7 @@ namespace ZQcom.ViewModels
 
 
             // --------------定时器相关-------------- 
-            _updateReceiveNumTimer = new Timer(UpdateReceive, null, 0, 200); // 每0.1秒更新一次
+            _updateReceiveNumTimer = new Timer(UpdateReceive, null, 0, 100); // 每0.1秒更新一次
         }
 
         // ------------------------组件映射------------------------------
@@ -650,37 +650,12 @@ namespace ZQcom.ViewModels
 
         // ---------接收打印数据--------
 
-        private int _receiveCount = 0; // 后台计数器
-        private async void UpdateReceive(object state)
-        {
-            int count = Interlocked.Exchange(ref _receiveCount, 0); // 获取并重置后台计数器
-            int bytes = Interlocked.Exchange(ref _receiveBytes, 0);
-
-            // 更新UI上的ReceiveNum
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
-                ReceiveBytes += bytes;
-            });
-
-            // 处理缓冲区
-            if (_logBuffer.Length > 0)
-            {
-                // 异步更新UI
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    TextEditor?.AppendText(_logBuffer.ToString());
-                    _logBuffer.Clear(); // 清空缓冲区
-                });
-            }
-        }
-
 
         // 高频接收模式
         private SemaphoreSlim _dataAvailableSignal = new SemaphoreSlim(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
         {
-            Interlocked.Increment(ref _receiveCount); // 增加后台计数器
+            Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
             _dataAvailableSignal.Release(); // 通知读取任务开始处理数据
         }
         public async Task ReadTaskHighFrequency(CancellationToken cancellationToken)
@@ -701,7 +676,7 @@ namespace ZQcom.ViewModels
                         if (bytesRead > 0)
                         {
                             // 统计字节数
-                            Interlocked.Add(ref _receiveBytes, bytesRead);
+                            Interlocked.Add(ref _backgroundReceiveBytes, bytesRead);
 
                             // 实时更新UI
                             string data = _serialPort.Encoding.GetString(buffer, 0, bytesRead);
@@ -743,9 +718,14 @@ namespace ZQcom.ViewModels
 
         // ----小批量数据接收----
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
-        {                                     
+        {
+            Interlocked.Add(ref _backgroundReceiveBytes, _serialPort.BytesToRead);
+
             // 直接读取所有可用数据并添加到队列中
             _smallBatchDataQueue.Enqueue(_serialPort.ReadExisting());
+
+            Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
+
         }
         private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
         {
@@ -755,6 +735,7 @@ namespace ZQcom.ViewModels
                 {
                     // 打印数据
                     LogMessageSmallBatch(ref data);
+                    
                 }
                 else
                 {
@@ -774,29 +755,32 @@ namespace ZQcom.ViewModels
         }
 
 
-        // 日志队列处理
-        private async Task ProcessLogQueueAsync(CancellationToken cancellationToken)
+        // 刷新接收数据
+        private int _backgroundReceiveCount; // 后台计数器
+        private int _backgroundReceiveBytes; // 后台计数器
+        private async void UpdateReceive(object state)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            int count = Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 获取并重置后台计数器
+            int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
+
+            // 更新UI上的ReceiveNum
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                //await _queueSemaphore.WaitAsync(cancellationToken); // 等待信号量
+                ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
+                ReceiveBytes += bytes;
+            });
 
-                if (_receiveQueue.TryDequeue(out var data))
+            // 处理缓冲区
+            if (_logBuffer.Length > 0)
+            {
+                // 异步更新UI
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    data = FormatData(data);
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        LogMessage($">> {data}");
-                        //TextEditor.AppendText($">> {data}");
-                    });
-                    // 将格式化后的数据放入日志队列
-                    if (IsProcessData)
-                        _logQueue.Enqueue(data);
-                }
-
+                    TextEditor?.AppendText(_logBuffer.ToString());
+                    _logBuffer.Clear(); // 清空缓冲区
+                });
             }
         }
-
 
 
         private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
@@ -1097,8 +1081,12 @@ namespace ZQcom.ViewModels
                 string logFilePath = GenerateLogFileName();
                 EnsureDirectoryExists(Path.GetDirectoryName(logFilePath));
                 // 保存日志框
-                if (LogText != "")
-                    File.WriteAllText(logFilePath, LogText);
+
+                if (TextEditor?.Text != "")
+                {
+                    File.WriteAllText(logFilePath, TextEditor?.Text);
+                    MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
                 // 保存处理数据框
                 if (IsProcessData)
                 {
@@ -1107,8 +1095,7 @@ namespace ZQcom.ViewModels
                     if (ConvertedText != "")
                         File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText);
                 }
-                if (ReceiveText != "" || ExtractedText != "" || ConvertedText != "")
-                    MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+     
             }
             catch (Exception ex)
             {
