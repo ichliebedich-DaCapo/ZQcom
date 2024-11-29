@@ -781,8 +781,11 @@ namespace ZQcom.ViewModels
                         // 转换为浮点数
                         if (float.TryParse(cleanedData, out float result))
                         {
-                            _processedDataBuffer.Append(result.ToString());
-                            _processedDataBuffer.AppendLine();// 添加换行符
+                            lock (_processedDataBuffer)
+                            {
+                                _processedDataBuffer.Append(result.ToString());
+                                _processedDataBuffer.AppendLine();// 添加换行符
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -845,11 +848,13 @@ namespace ZQcom.ViewModels
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     ConvertedText += _processedDataBuffer.ToString();
-                    _processedDataBuffer.Clear();
+                    lock (_processedDataBuffer)
+                    {
+                        _processedDataBuffer.Clear();
+                    }
                 });
                 
             }
-
         }
 
 
