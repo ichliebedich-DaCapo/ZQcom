@@ -31,11 +31,7 @@ namespace ZQcom.ViewModels
         // 内部普通变量
         private readonly SerialPortService _serialPortService;      // 串口服务对象
         private SerialPort? _serialPort;                            // 当前打开的串口实例
-        //private List<string> _logCache;                             // 日志缓存
-        //private FileStream ?_fileStream;                             // 日志文件流
-        //private StreamWriter _writer;                               // 日志文件写入对象
-        //private long _cacheSizeLimit;                               // 日志缓存大小
-        //private string ?_logFilePath;                                // 日志文件路径
+
         // 数据绑定属性
         private string _openCloseButtonText = "打开串口";           // 打开/关闭串口按钮的文本
         private string _sendDataText = "01040000000271CB";          // 发送的数据
@@ -56,7 +52,6 @@ namespace ZQcom.ViewModels
         private bool _isProcessData;                                // 是否处理数据
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
-        //private bool _isLogSave=false;                              // 是否保存日志
         private bool _isDisableTimestamp = false;                   // 是否禁用时间戳
         private bool _isForceProcess = false;                       // 是否强制处理数据
         private int _receiveBytes = 0;                              // 接收到的字节数
@@ -74,18 +69,16 @@ namespace ZQcom.ViewModels
 
         private readonly ConcurrentQueue<string> _receiveQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
         private readonly ConcurrentQueue<string> _logQueue = new ConcurrentQueue<string>();
-        private CancellationTokenSource? _processingCancellationTokenSource;
-        private Task? _processingTask;
-        private Task? _logProcessingTask;
+
 
         // 新
-        private CancellationTokenSource? _readCancellationTokenSource;
-        private Task? _readTask;
-        private AutoResetEvent _resetEvent = new AutoResetEvent(false);
+        private CancellationTokenSource? _highFrequencyReceivingCancellationTokenSource;
+        private Task? _highFrequencyReceivingTask;
+
 
         private ConcurrentQueue<string> _smallBatchDataQueue = new ConcurrentQueue<string>(); // 用于存储小批量数据的队列
-        private CancellationTokenSource _smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
-        private Task _smallBatchProcessingTask; // 小批量数据处理任务
+        private CancellationTokenSource ?_smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
+        private Task ?_smallBatchReceivingTask; // 小批量数据处理任务
 
         // 事件
         public event EventHandler<string>? DataReceived;            // 数据接收事件
@@ -105,16 +98,11 @@ namespace ZQcom.ViewModels
             StopBitOptions = [StopBits.None, StopBits.One, StopBits.Two, StopBits.OnePointFive];
             DataBitOptions = [5, 6, 7, 8];
 
-            //_cacheSizeLimit = 10 * 1024 * 1024; // 默认10 MB
-            //InitializeLogFile();
-
 
             //--------------前置准备--------------
             // 刷新串口列表
             PopulateSerialPortNames();
 
-            // 绑定接收数据
-            //_serialPortService.DataReceived += OnDataReceived;
 
             //发布事件
             _eventAggregator = eventAggregator;
@@ -124,7 +112,7 @@ namespace ZQcom.ViewModels
 
 
             // --------------定时器相关-------------- 
-            _updateReceiveNumTimer = new Timer(UpdateReceiveNum, null, 0, 200); // 每0.1秒更新一次
+            _updateReceiveNumTimer = new Timer(UpdateReceive, null, 0, 200); // 每0.1秒更新一次
         }
 
         // ------------------------组件映射------------------------------
@@ -355,18 +343,6 @@ namespace ZQcom.ViewModels
         }
 
 
-        //// 是否保存日志
-        //public bool IsLogSave
-        //{
-        //    get => _isLogSave;
-        //    set
-        //    {
-        //        _isLogSave = value;
-        //        RaisePropertyChanged(nameof(IsLogSave));
-        //    }
-        //}
-
-
         // 是否禁用时间戳
         public bool IsDisableTimestamp
         {
@@ -439,7 +415,6 @@ namespace ZQcom.ViewModels
             }
         }
 
-
         // 图表可视属性
         public System.Windows.Visibility ChartVisibility
         {
@@ -471,41 +446,52 @@ namespace ZQcom.ViewModels
 
 
         // ---------------------------------私有方法----------------------------------------
-        private async Task StartReadingAsync()
+        // 开启高频接收。适合大批量数据，高频次，100KHz接收仍不会卡顿，以数据中的分隔符为1次数据接收
+        private void StartHighFrequencyReceiving()
         {
-            if (_readTask != null && !_readTask.IsCompleted)
+            if (_highFrequencyReceivingTask != null && !_highFrequencyReceivingTask.IsCompleted)
             {
                 return; // 如果任务已经在运行，则不启动新的任务
             }
 
-            _readCancellationTokenSource = new CancellationTokenSource();
-            _readTask = ReadTask(_readCancellationTokenSource.Token);
+            _serialPort.DataReceived += OnDataReceivedHighFrequency;
+            _highFrequencyReceivingCancellationTokenSource = new CancellationTokenSource();
+            _highFrequencyReceivingTask = ReadTaskHighFrequency(_highFrequencyReceivingCancellationTokenSource.Token);
         }
 
-        public void StopReading()
+        public void StopHighFrequencyReceiving()
         {
-            if (_readCancellationTokenSource != null)
+            _serialPort.DataReceived -= OnDataReceivedHighFrequency;
+            if (_highFrequencyReceivingCancellationTokenSource != null)
             {
-                _readCancellationTokenSource.Cancel();
-                _readCancellationTokenSource.Dispose();
-                _readCancellationTokenSource = null;
+                _highFrequencyReceivingCancellationTokenSource.Cancel();
+                _highFrequencyReceivingCancellationTokenSource.Dispose();
+                _highFrequencyReceivingCancellationTokenSource = null;
             }
 
-            if (_readTask != null)
+            if (_highFrequencyReceivingTask != null)
             {
-                _readTask.Wait(); // 等待任务完成
-                _readTask = null;
+                _highFrequencyReceivingTask.Wait(); // 等待任务完成
+                _highFrequencyReceivingTask = null;
             }
         }
 
+        // 开启小批量接收。适合少量数据，低频次，10KHz没有问题。且不需要通过数据中的分隔符来判断是几次接收（自动添加换行），
+        // 同时为了性能考虑，日志采用定时刷新，解决了1KHz~10KHz出现时间戳丢失的情况（不过初次接收时，由于StringBuilder还在扩建，可能会导致时间戳丢失）
+        // 原本10KHZ以上会出现卡顿漏收问题，经过修改后，10KHz以上不适合使用，会出现大面积的数据丢失
         public void StartSmallBatchReceiving()
         {
+            if (_smallBatchReceivingTask != null && !_smallBatchReceivingTask.IsCompleted)
+            {
+                return; // 如果任务已经在运行，则不启动新的任务
+            }
+
             // 绑定 DataReceived 事件处理程序
             _serialPort.DataReceived += OnDataReceivedSmallBatch;
 
             // 启动小批量数据处理任务
             _smallBatchCancellationTokenSource = new CancellationTokenSource();
-            _smallBatchProcessingTask = ProcessSmallBatchDataAsync(_smallBatchCancellationTokenSource.Token);
+            _smallBatchReceivingTask = ProcessSmallBatchDataAsync(_smallBatchCancellationTokenSource.Token);
         }
 
         public void StopSmallBatchReceiving()
@@ -521,10 +507,10 @@ namespace ZQcom.ViewModels
                 _smallBatchCancellationTokenSource = null;
             }
 
-            if (_smallBatchProcessingTask != null)
+            if (_smallBatchReceivingTask != null)
             {
-                _smallBatchProcessingTask.Wait(); // 等待任务完成
-                _smallBatchProcessingTask = null;
+                _smallBatchReceivingTask.Wait(); // 等待任务完成
+                _smallBatchReceivingTask = null;
             }
         }
 
@@ -552,7 +538,7 @@ namespace ZQcom.ViewModels
 
         // 启用/禁用串口
         // 关闭串口时，也会同步关闭处理数据任务，
-        private async void ToggleSerialPort()
+        private void ToggleSerialPort()
         {
             if (_serialPort == null || !_serialPort.IsOpen)
             {
@@ -570,13 +556,8 @@ namespace ZQcom.ViewModels
 
                     // 启用接收
                     StartSmallBatchReceiving();
+                    //StartHighFrequencyReceiving();
 
-                    //// 【生产者-消费者模式】启动数据处理任务
-                    //_processingCancellationTokenSource = new CancellationTokenSource();
-                    //_processingTask = Task.Run(async () => await ProcessDataQueueAsync(_processingCancellationTokenSource.Token), _processingCancellationTokenSource.Token);
-
-                    //// 启动日志打印任务
-                    //_logProcessingTask = Task.Run(async () => await ProcessLogQueueAsync(_processingCancellationTokenSource.Token), _processingCancellationTokenSource.Token);
                 }
                 catch (Exception ex)
                 {
@@ -591,44 +572,9 @@ namespace ZQcom.ViewModels
                 OpenCloseButtonText = "打开串口";
 
                 // 关闭接收
-                StopSmallBatchReceiving() ;
+                StopSmallBatchReceiving();
+                //StopHighFrequencyReceiving();
 
-                //// 【生产者-消费者模式】停止数据处理任务
-                //if (_processingCancellationTokenSource != null && (_processingTask != null || _logProcessingTask != null))
-                //{
-                //    _processingCancellationTokenSource.Cancel();
-
-                //    try
-                //    {
-                //        // 使用异步等待，防止阻塞主线程
-                //        if (_processingTask != null)
-                //        {
-                //            await _processingTask.WithTimeout(TimeSpan.FromSeconds(10)); // 设置超时时间为10秒
-                //        }
-
-                //        if (_logProcessingTask != null)
-                //        {
-                //            await _logProcessingTask.WithTimeout(TimeSpan.FromSeconds(10)); // 设置超时时间为10秒
-                //        }
-                //    }
-                //    catch (OperationCanceledException)
-                //    {
-                //        // 任务被取消
-                //    }
-                //    catch (TimeoutException)
-                //    {
-                //        // 超时处理
-                //        MessageBox.Show("数据处理任务已超时。", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                //    }
-                //}
-                //else
-                //{
-                //    MessageBox.Show($"数据处理任务发生异常，丢失引用", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                //}
             }
         }
 
@@ -702,31 +648,42 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 接收打印数据
-        private SemaphoreSlim _queueSemaphore = new SemaphoreSlim(0);
-
-        private SemaphoreSlim _dataAvailableSignal = new SemaphoreSlim(0); // 信号量
-        private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
-        {
-            Interlocked.Increment(ref _receiveCount); // 增加后台计数器
-            _dataAvailableSignal.Release(); // 通知读取任务开始处理数据
-        }
+        // ---------接收打印数据--------
 
         private int _receiveCount = 0; // 后台计数器
-        private async void UpdateReceiveNum(object state)
+        private async void UpdateReceive(object state)
         {
             int count = Interlocked.Exchange(ref _receiveCount, 0); // 获取并重置后台计数器
             int bytes = Interlocked.Exchange(ref _receiveBytes, 0);
+
             // 更新UI上的ReceiveNum
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
                 ReceiveBytes += bytes;
             });
+
+            // 处理缓冲区
+            if (_logBuffer.Length > 0)
+            {
+                // 异步更新UI
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    TextEditor?.AppendText(_logBuffer.ToString());
+                    _logBuffer.Clear(); // 清空缓冲区
+                });
+            }
         }
 
-        // 读取任务
-        public async Task ReadTask(CancellationToken cancellationToken)
+
+        // 高频接收模式
+        private SemaphoreSlim _dataAvailableSignal = new SemaphoreSlim(0); // 信号量
+        private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
+        {
+            Interlocked.Increment(ref _receiveCount); // 增加后台计数器
+            _dataAvailableSignal.Release(); // 通知读取任务开始处理数据
+        }
+        public async Task ReadTaskHighFrequency(CancellationToken cancellationToken)
         {
             const int BatchSize = 1024; // 批量读取大小
 
@@ -748,7 +705,7 @@ namespace ZQcom.ViewModels
 
                             // 实时更新UI
                             string data = _serialPort.Encoding.GetString(buffer, 0, bytesRead);
-                            await LogMessageAsync(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                            await LogMessageHighFrequencyAsync(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                         }
 
                         // 防止CPU占用过高，使用异步延迟
@@ -768,7 +725,7 @@ namespace ZQcom.ViewModels
             }
         }
 
-        private async Task LogMessageAsync(string inputData, string timestamp)
+        private async Task LogMessageHighFrequencyAsync(string inputData, string timestamp)
         {
             var sb = new StringBuilder();
             var value = inputData.Replace("\0", "\\0");
@@ -784,21 +741,12 @@ namespace ZQcom.ViewModels
             });
         }
 
-
-
-        // 小批量数据接收
+        // ----小批量数据接收----
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
-        {
-            // 直接读取所有可用数据
-            string data = _serialPort.ReadExisting();
-
-            if (!string.IsNullOrEmpty(data))
-            {
-                // 将数据添加到队列中
-                _smallBatchDataQueue.Enqueue(data);
-            }
+        {                                     
+            // 直接读取所有可用数据并添加到队列中
+            _smallBatchDataQueue.Enqueue(_serialPort.ReadExisting());
         }
-
         private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -806,7 +754,7 @@ namespace ZQcom.ViewModels
                 if (_smallBatchDataQueue.TryDequeue(out string data))
                 {
                     // 打印数据
-                    await LogMessageAsync(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                    LogMessageSmallBatch(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                 }
                 else
                 {
@@ -815,43 +763,16 @@ namespace ZQcom.ViewModels
                 }
             }
         }
-        //private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
-        //{
-        //    while (!cancellationToken.IsCancellationRequested)
-        //    {
-        //        if (_smallBatchDataQueue.TryDequeue(out string data))
-        //        {
-        //            // 处理数据
-        //            await ProcessAndDisplaySmallBatchData(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-        //        }
-        //        else
-        //        {
-        //            // 如果队列为空，等待一段时间再检查
-        //            await Task.Delay(10, cancellationToken);
-        //        }
-        //    }
-        //}
-        private async Task ProcessAndDisplaySmallBatchData(string inputData, string timestamp)
+        private StringBuilder _logBuffer = new StringBuilder(); // 用于累积日志数据
+        private void LogMessageSmallBatch(string inputData, string timestamp)
         {
-            try
-            {
-                // 尝试将输入数据转换为浮点数
-                float floatValue = float.Parse(inputData.Trim());
+            var value = inputData.Replace("\0", "\\0");
 
-                // 更新ConvertedText
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ConvertedText = $"{timestamp}: {floatValue}"; // 假设ConvertedText是您的数据绑定属性
-                });
-            }
-            catch (FormatException)
-            {
-                // 如果无法转换为浮点数，则忽略或记录错误
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    ConvertedText = $"{timestamp}: Invalid Data"; // 或者显示错误信息
-                });
-            }
+            _logBuffer.Append('[');
+            _logBuffer.Append(timestamp);
+            _logBuffer.Append("]>> ");
+            _logBuffer.Append(value);
+            _logBuffer.AppendLine();
         }
 
 
@@ -860,7 +781,7 @@ namespace ZQcom.ViewModels
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                await _queueSemaphore.WaitAsync(cancellationToken); // 等待信号量
+                //await _queueSemaphore.WaitAsync(cancellationToken); // 等待信号量
 
                 if (_receiveQueue.TryDequeue(out var data))
                 {
