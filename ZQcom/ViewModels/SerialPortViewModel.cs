@@ -78,9 +78,14 @@ namespace ZQcom.ViewModels
         private Task? _processingTask;
         private Task? _logProcessingTask;
 
+        // 新
         private CancellationTokenSource? _readCancellationTokenSource;
         private Task? _readTask;
         private AutoResetEvent _resetEvent = new AutoResetEvent(false);
+
+        private ConcurrentQueue<string> _smallBatchDataQueue = new ConcurrentQueue<string>(); // 用于存储小批量数据的队列
+        private CancellationTokenSource _smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
+        private Task _smallBatchProcessingTask; // 小批量数据处理任务
 
         // 事件
         public event EventHandler<string>? DataReceived;            // 数据接收事件
@@ -109,7 +114,7 @@ namespace ZQcom.ViewModels
             PopulateSerialPortNames();
 
             // 绑定接收数据
-            _serialPortService.DataReceived += OnDataReceived;
+            //_serialPortService.DataReceived += OnDataReceived;
 
             //发布事件
             _eventAggregator = eventAggregator;
@@ -493,6 +498,35 @@ namespace ZQcom.ViewModels
             }
         }
 
+        public void StartSmallBatchReceiving()
+        {
+            // 绑定 DataReceived 事件处理程序
+            _serialPort.DataReceived += OnDataReceivedSmallBatch;
+
+            // 启动小批量数据处理任务
+            _smallBatchCancellationTokenSource = new CancellationTokenSource();
+            _smallBatchProcessingTask = ProcessSmallBatchDataAsync(_smallBatchCancellationTokenSource.Token);
+        }
+
+        public void StopSmallBatchReceiving()
+        {
+            // 解绑 DataReceived 事件处理程序
+            _serialPort.DataReceived -= OnDataReceivedSmallBatch;
+
+            // 取消并等待小批量数据处理任务完成
+            if (_smallBatchCancellationTokenSource != null)
+            {
+                _smallBatchCancellationTokenSource.Cancel();
+                _smallBatchCancellationTokenSource.Dispose();
+                _smallBatchCancellationTokenSource = null;
+            }
+
+            if (_smallBatchProcessingTask != null)
+            {
+                _smallBatchProcessingTask.Wait(); // 等待任务完成
+                _smallBatchProcessingTask = null;
+            }
+        }
 
         // ---------------------------------绑定事件----------------------------------------
         public ICommand RefreshSerialPortsCommand => new RelayCommand(PopulateSerialPortNames);
@@ -534,10 +568,8 @@ namespace ZQcom.ViewModels
                     _serialPort = _serialPortService.OpenPort(SelectedSerialPort, baudRate, SelectedParity, SelectedStopBits, SelectedDataBits);
                     OpenCloseButtonText = "关闭串口";
 
-                    // 启动定时器
-                    //_queueSizeUpdateTimer.Start();
-                    // 【调试】多线程
-                   await StartReadingAsync();
+                    // 启用接收
+                    StartSmallBatchReceiving();
 
                     //// 【生产者-消费者模式】启动数据处理任务
                     //_processingCancellationTokenSource = new CancellationTokenSource();
@@ -558,12 +590,8 @@ namespace ZQcom.ViewModels
                 _serialPort = null;
                 OpenCloseButtonText = "打开串口";
 
-                // 【调试】多线程
-                //_isRunning = false;
-                //_readTaskThread.
-                _resetEvent.Set(); // 确保读取任务退出
-                StopReading();
-
+                // 关闭接收
+                StopSmallBatchReceiving() ;
 
                 //// 【生产者-消费者模式】停止数据处理任务
                 //if (_processingCancellationTokenSource != null && (_processingTask != null || _logProcessingTask != null))
@@ -756,6 +784,75 @@ namespace ZQcom.ViewModels
             });
         }
 
+
+
+        // 小批量数据接收
+        private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
+        {
+            // 直接读取所有可用数据
+            string data = _serialPort.ReadExisting();
+
+            if (!string.IsNullOrEmpty(data))
+            {
+                // 将数据添加到队列中
+                _smallBatchDataQueue.Enqueue(data);
+            }
+        }
+
+        private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (_smallBatchDataQueue.TryDequeue(out string data))
+                {
+                    // 打印数据
+                    await LogMessageAsync(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                }
+                else
+                {
+                    // 如果队列为空，等待一段时间再检查
+                    await Task.Delay(10, cancellationToken);
+                }
+            }
+        }
+        //private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
+        //{
+        //    while (!cancellationToken.IsCancellationRequested)
+        //    {
+        //        if (_smallBatchDataQueue.TryDequeue(out string data))
+        //        {
+        //            // 处理数据
+        //            await ProcessAndDisplaySmallBatchData(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+        //        }
+        //        else
+        //        {
+        //            // 如果队列为空，等待一段时间再检查
+        //            await Task.Delay(10, cancellationToken);
+        //        }
+        //    }
+        //}
+        private async Task ProcessAndDisplaySmallBatchData(string inputData, string timestamp)
+        {
+            try
+            {
+                // 尝试将输入数据转换为浮点数
+                float floatValue = float.Parse(inputData.Trim());
+
+                // 更新ConvertedText
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ConvertedText = $"{timestamp}: {floatValue}"; // 假设ConvertedText是您的数据绑定属性
+                });
+            }
+            catch (FormatException)
+            {
+                // 如果无法转换为浮点数，则忽略或记录错误
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ConvertedText = $"{timestamp}: Invalid Data"; // 或者显示错误信息
+                });
+            }
+        }
 
 
         // 日志队列处理
