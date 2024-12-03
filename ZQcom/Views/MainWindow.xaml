@@ -111,10 +111,17 @@
                 <Grid Height="30">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="10,0,0,0" Grid.Column="0" />
+                    <StackPanel Orientation="Horizontal" Grid.Column="1">
+                        <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="56" />
+                        <Button Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="10,0,0,0" />
+                        <Button Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
+                    </StackPanel>
+                    
                     <!--暂时先用按钮凑合凑合-->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Column="2">
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="最小化" Click="MinimizeButton_Click" Width="70"  Margin="0,0,5,0" />
@@ -168,14 +175,6 @@
                         </Grid.RowDefinitions>
                         <avalonEdit:TextEditor  Name="textEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
                                                 TextChanged="TextBox_TextChanged"/>
-                        <!--<TextBox Name="TbxLog" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0" 
-                         Text="{Binding SerialPortViewModel.LogText, Mode=OneWay}" Grid.Row="0" 
-                         ScrollViewer.VerticalScrollBarVisibility="Auto">
-                            <i:Interaction.Behaviors>
-                                --><!--自动滚动到底部--><!--
-                                <behaviors:ScrollToEndBehavior />
-                            </i:Interaction.Behaviors>
-                        </TextBox>-->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
                             <TextBlock Text="接收字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
                             <TextBlock Text="{Binding SerialPortViewModel.ReceiveBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
@@ -197,9 +196,7 @@
                             <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
                             <CheckBox Content="禁用时间戳" IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" Margin="0,0,10,0" Height="14" />
                             <!--简陋就简陋吧，凑合着-->
-                            <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="56" />
-                            <Button Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="10,0,0,0" />
-                            <Button Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
+                            
                             <!--别问，问就是没做好-->
                             <!--<CheckBox Content="日志实时保存" IsChecked="{Binding SerialPortViewModel.IsLogSave}" Margin="0,0,10,0" Height="14" />-->
                         </StackPanel>

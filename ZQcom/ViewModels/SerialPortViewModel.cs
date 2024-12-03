@@ -479,9 +479,13 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 开启小批量接收。适合少量数据，低频次，10KHz没有问题。且不需要通过数据中的分隔符来判断是几次接收（自动添加换行），
+        /// <summary>
+        /// 小批量接收
+        /// </summary>
+        // 适合少量数据，低频次，10KHz没有问题。且不需要通过数据中的分隔符来判断是几次接收（自动添加换行），
         // 同时为了性能考虑，日志采用定时刷新，解决了1KHz~10KHz出现时间戳丢失的情况（不过初次接收时，由于StringBuilder还在扩建，可能会导致时间戳丢失）
         // 原本10KHZ以上会出现卡顿漏收问题，经过修改后，10KHz以上不适合使用，会出现大面积的数据丢失
+        // 1KHz处理数据时容易出现换行缺失，500Hz很少出现换行缺失，200Hz几乎没有换行缺失
         public void StartSmallBatchReceiving()
         {
             if (_smallBatchReceivingTask != null && !_smallBatchReceivingTask.IsCompleted)
@@ -672,7 +676,7 @@ namespace ZQcom.ViewModels
         // ---------接收打印数据--------
 
 
-        // 高频接收模式
+        /// -------------高频接收模式--------------
         private SemaphoreSlim _dataAvailableSignal = new SemaphoreSlim(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
         {
@@ -776,14 +780,17 @@ namespace ZQcom.ViewModels
                     try
                     {
                         // 去掉 \r\n 和空格
-                        string cleanedData = data.Replace("\r", "").Replace("\n", "").Trim();
+                        var sb = new StringBuilder(data);
+                        sb.Replace("\r", "");
+                        sb.Replace("\n", "");
+                        sb.Replace(" ", "");
 
                         // 转换为浮点数
-                        if (float.TryParse(cleanedData, out float result))
+                        if (float.TryParse(sb.ToString(), out float result))
                         {
                             lock (_processedDataBuffer)
                             {
-                                _processedDataBuffer.Append(result.ToString());
+                                _processedDataBuffer.Append(result);
                                 _processedDataBuffer.AppendLine();// 添加换行符
                             }
                         }
@@ -797,7 +804,7 @@ namespace ZQcom.ViewModels
                 else
                 {
                     // 如果队列为空，等待一段时间再检查
-                    await Task.Delay(10, cancellationToken);
+                    await Task.Delay(15, cancellationToken);
                 }
             }
         }
@@ -808,11 +815,14 @@ namespace ZQcom.ViewModels
         private StringBuilder _logBuffer = new StringBuilder(); // 用于累积日志数据
         private void LogMessageSmallBatch(ref string inputData)
         {
-            _logBuffer.Append('[');
-            _logBuffer.Append($"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-            _logBuffer.Append("]>> ");
-            _logBuffer.Append(inputData);
-            _logBuffer.AppendLine();
+            // 缓存当前时间的格式化字符串
+            var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+
+            // 使用 AppendFormat 减少方法调用次数
+            lock (_logBuffer)
+            {
+                _logBuffer.AppendFormat("[{0}]>> {1}{2}", now, inputData, Environment.NewLine);
+            }
         }
 
 
@@ -837,8 +847,11 @@ namespace ZQcom.ViewModels
                 // 异步更新UI
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    TextEditor?.AppendText(_logBuffer.ToString());
-                    _logBuffer.Clear(); // 清空缓冲区
+                    lock (_logBuffer)
+                    {
+                        TextEditor?.AppendText(_logBuffer.ToString());
+                        _logBuffer.Clear(); // 清空缓冲区
+                    }
                 });
             }
 
@@ -847,9 +860,9 @@ namespace ZQcom.ViewModels
             {
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    ConvertedText += _processedDataBuffer.ToString();
-                    lock (_processedDataBuffer)
+                lock (_processedDataBuffer)
                     {
+                        ConvertedText += _processedDataBuffer.ToString();
                         _processedDataBuffer.Clear();
                     }
                 });
