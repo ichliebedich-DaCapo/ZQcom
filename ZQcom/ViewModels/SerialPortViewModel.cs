@@ -49,11 +49,11 @@ namespace ZQcom.ViewModels
         private int _selectedDataBits = 8;                          // 选中的数据位
         private bool _isTimedSendEnabled;                           // 是否启用定时发送
         private int _timedSendInterval = 100;                       // 定时发送的时间间隔（毫秒）
-        private bool _isProcessData;                                // 是否处理数据
+        private bool _isExtractedData=false;                        // 是否处理数据
+        private bool _isConvertedData=false;                        // 是否转换数据
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
         private bool _isDisableTimestamp = false;                   // 是否禁用时间戳
-        private bool _isForceProcess = false;                       // 是否强制处理数据
         private int _receiveBytes = 0;                              // 接收到的字节数
         private int _sendBytes = 0;                                 // 发送的字节数
         private int _receiveNum = 0;                                // 接收到的数据包数量
@@ -313,15 +313,27 @@ namespace ZQcom.ViewModels
 
 
         // 是否处理数据
-        public bool IsProcessData
+        public bool IsExtractedData
         {
-            get => _isProcessData;
+            get => _isExtractedData;
             set
             {
-                _isProcessData = value;
-                RaisePropertyChanged(nameof(IsProcessData));
+                _isExtractedData = value;
+                RaisePropertyChanged(nameof(IsExtractedData));
             }
         }
+
+        // 是否转换数据
+        public bool IsConvertedData
+        {
+            get => _isConvertedData;
+            set
+            {
+                _isConvertedData = value;
+                RaisePropertyChanged(nameof(IsConvertedData));
+            }
+        }
+
 
         // 截取数据的起始位置
         public int StartPosition
@@ -357,17 +369,6 @@ namespace ZQcom.ViewModels
             }
         }
 
-
-        // 是否强制处理数据
-        public bool IsForceProcess
-        {
-            get => _isForceProcess;
-            set
-            {
-                _isForceProcess = value;
-                RaisePropertyChanged(nameof(IsForceProcess));
-            }
-        }
 
         // 接收的字节数、数量，发送的字节数、数量
         public int ReceiveBytes
@@ -761,7 +762,7 @@ namespace ZQcom.ViewModels
                     LogMessageSmallBatch(ref data);
 
                     // 将数据添加到处理队列中
-                    if(IsProcessData)
+                    if(IsExtractedData)
                         _dataToProcessQueue.Enqueue(data);
                 }
                 else
@@ -1025,7 +1026,7 @@ namespace ZQcom.ViewModels
                 if (StartPosition <= 0 && length != -1)
                 {
                     MessageBox.Show("起始位置不能小于等于0，请重新输入！");
-                    IsProcessData = false; // 关闭处理数据
+                    IsExtractedData = false; // 关闭处理数据
                     return;
                 }
 
@@ -1045,24 +1046,11 @@ namespace ZQcom.ViewModels
                 }
                 else
                 {
-                    if (!IsForceProcess)
-                        if (startIndex + length > hexDataWithoutSpaces.Length)
+                        if (startIndex + length <= hexDataWithoutSpaces.Length)
                         {
-                            if (!IsForceProcess)
-                            {
-                                MessageBox.Show("数据长度不足，无法处理！");
-                                IsProcessData = false; // 关闭处理数据
-                            }
-                            else
-                            {
-                                ConvertedDataMessage("无法转换");
-                            }
-                            return;
+                            ConvertedDataMessage("长度不足");
                         }
-                        else
-                        {
-                            ConvertedDataMessage("无法转换");
-                        }
+ 
                     // 截取数据,并发送
                     processedData = hexDataWithoutSpaces.Substring(startIndex, length);
                 }
@@ -1080,16 +1068,9 @@ namespace ZQcom.ViewModels
                     if (bytes.Length != 4)
                     {
                         // 错误情况下的处理
-                        if (!IsForceProcess)
-                        {
-                            MessageBox.Show("十六进制字符串长度不正确，无法转换为32位浮点数！");
-                            IsProcessData = false; // 关闭处理数据
-                            return;
-                        }
-                        else
-                        {
+
                             ConvertedDataMessage("长度不足");
-                        }
+    
                     }
                     else
                     {
@@ -1118,16 +1099,7 @@ namespace ZQcom.ViewModels
                     }
                     else
                     {
-                        if (!IsForceProcess)
-                        {
-                            MessageBox.Show("无法将数据转换为浮点数！");
-                            IsProcessData = false; // 关闭处理数据
-                            return;
-                        }
-                        else
-                        {
                             ConvertedDataMessage("无法转换");
-                        }
                     }
                 }
 
@@ -1140,7 +1112,7 @@ namespace ZQcom.ViewModels
             {
                 // 其他异常
                 MessageBox.Show($"处理数据发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                IsProcessData = false;// 关闭处理数据
+                IsExtractedData = false;// 关闭处理数据
             }
         }
 
@@ -1178,7 +1150,7 @@ namespace ZQcom.ViewModels
                     MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 // 保存处理数据框
-                if (IsProcessData)
+                if (IsExtractedData)
                 {
                     if (ExtractedText != "")
                         File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText);
