@@ -103,7 +103,7 @@
     <Border CornerRadius="10" Background="White" Padding="1"  Name="MainBorder"
             MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
              ClipToBounds="True">
-        
+
         <DockPanel LastChildFill="True" ClipToBounds="True">
 
             <!-- 自定义标题栏 -->
@@ -120,9 +120,9 @@
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="40" />
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="10,0,0,0" />
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
-                        
+
                     </StackPanel>
-                    
+
                     <!--暂时先用按钮凑合凑合-->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Column="2">
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="最小化" Click="MinimizeButton_Click" Width="70"  Margin="0,0,5,0" />
@@ -141,14 +141,37 @@
 
                 <!-- 左侧 -->
                 <DockPanel Grid.Column="0" LastChildFill="True" Margin="10" >
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                        <ComboBox Name="CmbSerialPorts" ItemsSource="{Binding SerialPortViewModel.SerialPortNames}" SelectedItem="{Binding SerialPortViewModel.SelectedSerialPort}" Width="80" Margin="0,0,10,0" />
-                        <Button Content="刷新" Command="{Binding SerialPortViewModel.RefreshSerialPortsCommand}" Width="80" Margin="10,0,0,0" />
-                        <Button Content="{Binding SerialPortViewModel.OpenCloseButtonText}" Command="{Binding SerialPortViewModel.ToggleSerialPortCommand}" Width="80" Margin="10,0,0,0" />
-                        <CheckBox Content="禁用时间戳" IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" Margin="10,0,10,0" Height="14" />
-                        <!--记录-->
-                        <Button Content="标记" Command="{Binding SerialPortViewModel.SignCommand}" Margin="10,0,0,0" Width="60" />
-                    </StackPanel>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <!-- 定义两列 -->
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 左边部分 -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ComboBox Name="CmbSerialPorts" 
+                  ItemsSource="{Binding SerialPortViewModel.SerialPortNames}" 
+                  SelectedItem="{Binding SerialPortViewModel.SelectedSerialPort}" 
+                  Width="80" Margin="0,0,10,0" />
+                            <Button Content="刷新" 
+                Command="{Binding SerialPortViewModel.RefreshSerialPortsCommand}" 
+                Width="80" Margin="10,0,0,0" />
+                            <Button Content="{Binding SerialPortViewModel.OpenCloseButtonText}" 
+                Command="{Binding SerialPortViewModel.ToggleSerialPortCommand}" 
+                Width="80" Margin="10,0,0,0" />
+                        </StackPanel>
+
+                        <!-- 右边部分 -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <CheckBox Content="禁用时间戳" 
+                  IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" 
+                  Margin="10,0,10,0" Height="14" />
+                            <Button Content="标记" 
+                Command="{Binding SerialPortViewModel.SignCommand}" 
+                Margin="0,0,0,0" Width="60" />
+                        </StackPanel>
+                    </Grid>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBlock Text="波特率:" VerticalAlignment="Center" Margin="0,0,10,0" />
                         <ComboBox Name="CmbBaudRates" ItemsSource="{Binding SerialPortViewModel.BaudRateOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedBaudRate}" Width="80" />
@@ -160,8 +183,8 @@
                         <ComboBox Name="CmbDataBits" ItemsSource="{Binding SerialPortViewModel.DataBitOptions}" SelectedItem="{Binding SerialPortViewModel.SelectedDataBits}" Width="80" />
                         <TextBlock Text="CRC校验(未完成):" VerticalAlignment="Center" Margin="10,0,10,0" />
                         <ComboBox Name="CmbCRC" ItemsSource="{Binding SerialPortViewModel.CRCOptions}" SelectedItem="{Binding SerialPortViewModel.CRC}" Width="68" />
-                       
-                        
+
+
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBox Name="TbxSendData" Text="{Binding SerialPortViewModel.SendDataText}" VerticalAlignment="Center" Width="200" Margin="0,0,10,0" />
@@ -193,16 +216,27 @@
                             <TextBlock Text="待处理:" VerticalAlignment="Center" Margin="10,0,10,0" />
                             <TextBlock Text="{Binding SerialPortViewModel.PendingNum}" VerticalAlignment="Center" Margin="10,0,10,0" Width="56"  />
                         </StackPanel>
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                            <CheckBox Content="截取数据" IsChecked="{Binding SerialPortViewModel.IsExtractedData}" Margin="0,0,10,0" Height="14" />
-                            <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="10,0,10,0" />
-                            <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="70" Margin="0,0,10,0" />
-                            <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
+                        <Grid Grid.Row="2" Margin="0,10,0,0">
+                            <!-- 定义两列 -->
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                            <CheckBox Content="转换数据" IsChecked="{Binding SerialPortViewModel.IsConvertedData}" Margin="0,0,10,0" Height="14" />
-                           
-                        </StackPanel>
+                            <!-- 左边部分 -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <CheckBox Content="截取数据" IsChecked="{Binding SerialPortViewModel.IsExtractedData}" Margin="0,0,10,0" Height="14" />
+                                <TextBlock Text="起始位置:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBox Name="TbxStartPosition" Text="{Binding SerialPortViewModel.StartPosition}" Width="70" Margin="0,0,10,0" />
+                                <TextBlock Text="长度:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBox Name="TbxLength" Text="{Binding SerialPortViewModel.Length}" Width="70" Margin="0,0,10,0" />
+                            </StackPanel>
+
+                            <!-- 右边部分 -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <CheckBox Content="转换数据" IsChecked="{Binding SerialPortViewModel.IsConvertedData}" Margin="0,0,10,0" Height="14" />
+                            </StackPanel>
+                        </Grid>
                         <Grid Grid.Row="3" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="27*" />

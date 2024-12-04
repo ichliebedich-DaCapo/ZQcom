@@ -20,7 +20,7 @@ using System.Windows.Threading;
 using ICSharpCode.AvalonEdit;
 
 /// 编程守则：
-/// ①UI更新：一定使用UI异步更新，不然会严重阻塞主线程
+
 
 
 
@@ -49,8 +49,8 @@ namespace ZQcom.ViewModels
         private int _selectedDataBits = 8;                          // 选中的数据位
         private bool _isTimedSendEnabled;                           // 是否启用定时发送
         private int _timedSendInterval = 100;                       // 定时发送的时间间隔（毫秒）
-        private bool _isExtractedData=false;                        // 是否处理数据
-        private bool _isConvertedData=false;                        // 是否转换数据
+        private bool _isExtractedData = false;                        // 是否处理数据
+        private bool _isConvertedData = false;                        // 是否转换数据
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
         private bool _isDisableTimestamp = false;                   // 是否禁用时间戳
@@ -78,9 +78,9 @@ namespace ZQcom.ViewModels
 
         private ConcurrentQueue<string> _smallBatchDataQueue = new ConcurrentQueue<string>(); // 用于存储小批量数据的队列
         private ConcurrentQueue<string> _dataToProcessQueue = new ConcurrentQueue<string>(); // 用于存储需要处理的数据
-        private CancellationTokenSource ?_smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
+        private CancellationTokenSource? _smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
         private CancellationTokenSource? _dataProcessingCancellationTokenSource; // 用于取消数据处理任务
-        private Task ?_smallBatchReceivingTask; // 小批量数据处理任务
+        private Task? _smallBatchReceivingTask; // 小批量数据处理任务
         private Task? _dataProcessingTask; // 数据处理任务
 
         // 事件
@@ -115,7 +115,7 @@ namespace ZQcom.ViewModels
 
 
             // --------------定时器相关-------------- 
-            _updateReceiveNumTimer = new Timer(UpdateReceive, null, 0, 100); // 每0.1秒更新一次
+            _updateReceiveNumTimer = new Timer(UpdateProperties, null, 0, 100); // 每0.1秒更新一次
         }
 
         // ------------------------组件映射------------------------------
@@ -762,7 +762,7 @@ namespace ZQcom.ViewModels
                     LogMessageSmallBatch(ref data);
 
                     // 将数据添加到处理队列中
-                    if(IsExtractedData)
+                    if (IsExtractedData || IsConvertedData)
                         _dataToProcessQueue.Enqueue(data);
                 }
                 else
@@ -772,34 +772,86 @@ namespace ZQcom.ViewModels
                 }
             }
         }
+
+
+        /// <summary>
+        ///  处理数据
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// 目前只适用小批量数据接收模式
         private async Task ProcessDataAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested || _dataToProcessQueue.Count > 0)
             {
                 if (_dataToProcessQueue.TryDequeue(out string data))
                 {
-                    try
-                    {
-                        // 去掉 \r\n 和空格
-                        var sb = new StringBuilder(data);
-                        sb.Replace("\r", "");
-                        sb.Replace("\n", "");
-                        sb.Replace(" ", "");
+                    string extractedData=data;
 
-                        // 转换为浮点数
-                        if (float.TryParse(sb.ToString(), out float result))
+                    // 截取数据
+                    if (IsExtractedData)
+                    {
+
+                        // 检查起始位置
+                        if (Length != -1&& StartPosition < 1)
                         {
-                            lock (_processedDataBuffer)
+                            MessageBox.Show("起始位置不能小于等于0，请重新输入！");
+                            IsExtractedData = false; // 关闭截取数据
+                            return;
+                        }
+
+                        // ----根据是否发送16进制数据进行不同处理----
+              
+                        // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
+                        string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
+
+                        //// 最终转换的浮点数据,默认为0
+                        //float floatValue = 0.0f;
+
+
+                        // ------检查数据长度-----
+                        // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
+                        if (Length == -1)
+                        {
+                            extractedData = hexDataWithoutSpaces;
+                        }
+                        else
+                        {
+                            if (StartPosition-1 + Length <= hexDataWithoutSpaces.Length)
                             {
-                                _processedDataBuffer.Append(result);
-                                _processedDataBuffer.AppendLine();// 添加换行符
+                                ConvertedDataMessage("长度不足");
+                            }
+
+                            // 截取数据
+                            extractedData = hexDataWithoutSpaces.Substring(StartPosition-1, Length);
+                        }
+
+                        // 显示截取的数据
+                        ExtractedDataMessage(extractedData);
+                    }
+
+                    // -----转换数据-----
+                    if (IsConvertedData)
+                    {
+                        try
+                        {
+                            var convertedData = new StringBuilder(extractedData);
+
+                            // 转换为浮点数
+                            if (float.TryParse(convertedData.ToString(), out float result))
+                            {
+                                lock (_processedDataBuffer)
+                                {
+                                    _processedDataBuffer.Append(result);
+                                    _processedDataBuffer.AppendLine();// 添加换行符
+                                }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        // 处理异常
-                        MessageBox.Show("数据转换失败：" + ex.Message);
+                        catch (Exception ex)
+                        {
+                            // 处理异常
+                            MessageBox.Show("数据转换失败：" + ex.Message);
+                        }
                     }
                 }
                 else
@@ -830,7 +882,7 @@ namespace ZQcom.ViewModels
         // -------刷新接收数据-------
         private int _backgroundReceiveCount; // 后台计数器
         private int _backgroundReceiveBytes; // 后台计数器
-        private async void UpdateReceive(object state)
+        private async void UpdateProperties(object state)
         {
             int count = Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 获取并重置后台计数器
             int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
@@ -861,42 +913,16 @@ namespace ZQcom.ViewModels
             {
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                lock (_processedDataBuffer)
+                    lock (_processedDataBuffer)
                     {
                         ConvertedText += _processedDataBuffer.ToString();
                         _processedDataBuffer.Clear();
                     }
                 });
-                
+
             }
         }
 
-
-
-
-        private async Task ProcessDataQueueAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                while (!_logQueue.IsEmpty || !cancellationToken.IsCancellationRequested)
-                {
-                    if (_logQueue.TryDequeue(out var data))
-                    {
-                        ProcessData(data);
-                        PendingNum = _logQueue.Count; // 更新队列大小
-                    }
-                    else
-                    {
-                        await Task.Delay(100, cancellationToken);
-                    }
-                }
-            }
-            catch (OperationCanceledException) { /* 任务被取消 */ }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"数据处理任务发生异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
 
         // 启用/禁用定时发送
         private async void ToggleTimedSend()
@@ -1046,11 +1072,11 @@ namespace ZQcom.ViewModels
                 }
                 else
                 {
-                        if (startIndex + length <= hexDataWithoutSpaces.Length)
-                        {
-                            ConvertedDataMessage("长度不足");
-                        }
- 
+                    if (startIndex + length <= hexDataWithoutSpaces.Length)
+                    {
+                        ConvertedDataMessage("长度不足");
+                    }
+
                     // 截取数据,并发送
                     processedData = hexDataWithoutSpaces.Substring(startIndex, length);
                 }
@@ -1069,8 +1095,8 @@ namespace ZQcom.ViewModels
                     {
                         // 错误情况下的处理
 
-                            ConvertedDataMessage("长度不足");
-    
+                        ConvertedDataMessage("长度不足");
+
                     }
                     else
                     {
@@ -1099,7 +1125,7 @@ namespace ZQcom.ViewModels
                     }
                     else
                     {
-                            ConvertedDataMessage("无法转换");
+                        ConvertedDataMessage("无法转换");
                     }
                 }
 
@@ -1157,7 +1183,7 @@ namespace ZQcom.ViewModels
                     if (ConvertedText != "")
                         File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText);
                 }
-     
+
             }
             catch (Exception ex)
             {
