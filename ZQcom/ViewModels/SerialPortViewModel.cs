@@ -43,14 +43,14 @@ namespace ZQcom.ViewModels
         private bool _isHexDisplay;                                 // 是否以十六进制格式显示数据
         private bool _addNewline;                                   // 是否在每行数据末尾添加换行符
         private string _selectedSerialPort = string.Empty;          // 选中的串口号
-        private int _selectedBaudRate = 9600;                       // 选中的波特率
+        private int _selectedBaudRate = 115200;                     // 选中的波特率
         private Parity _selectedParity = Parity.None;               // 选中的校验位
         private StopBits _selectedStopBits = StopBits.One;          // 选中的停止位
         private int _selectedDataBits = 8;                          // 选中的数据位
         private bool _isTimedSendEnabled;                           // 是否启用定时发送
         private int _timedSendInterval = 100;                       // 定时发送的时间间隔（毫秒）
-        private bool _isExtractedData = false;                        // 是否处理数据
-        private bool _isConvertedData = false;                        // 是否转换数据
+        private bool _isExtractedData = false;                      // 是否处理数据
+        private bool _isConvertedData = false;                      // 是否转换数据
         private int _startPosition = 7;                             // 数据处理的起始位置
         private int _length = 8;                                    // 数据处理的长度
         private bool _isDisableTimestamp = false;                   // 是否禁用时间戳
