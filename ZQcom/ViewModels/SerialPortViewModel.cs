@@ -871,11 +871,11 @@ namespace ZQcom.ViewModels
                 // 更新UI上的处理结果（每处理一批数据后更新一次）
                 if (_processedDataBuffer.Length > 0 && batch.Count == 0)
                 {
-                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    {
+                    //Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    //{
                         ConvertedText += _processedDataBuffer.ToString();
                         _processedDataBuffer.Clear();
-                    }));
+                    //}));
                 }
             }
 
@@ -897,10 +897,10 @@ namespace ZQcom.ViewModels
 
         private void UpdateUIWithBatch(List<string> batch)
         {
-            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
+            //Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            //{
                 ConvertedText += string.Join(Environment.NewLine, batch) + Environment.NewLine;
-            }));
+            //}));
         }
 
 
