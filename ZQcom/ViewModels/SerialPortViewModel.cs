@@ -499,11 +499,11 @@ namespace ZQcom.ViewModels
 
             // 启动小批量数据处理任务
             _smallBatchCancellationTokenSource = new CancellationTokenSource();
-            _smallBatchReceivingTask = ProcessSmallBatchDataAsync(_smallBatchCancellationTokenSource.Token);
+            _smallBatchReceivingTask = Task.Run(() => ProcessSmallBatchData(_smallBatchCancellationTokenSource.Token));
 
             // 启动数据处理任务
             _dataProcessingCancellationTokenSource = new CancellationTokenSource();
-            _dataProcessingTask = ProcessDataAsync(_dataProcessingCancellationTokenSource.Token);
+            _dataProcessingTask = Task.Run(() => ProcessData(_dataProcessingCancellationTokenSource.Token));
         }
 
         public void StopSmallBatchReceiving()
@@ -752,7 +752,7 @@ namespace ZQcom.ViewModels
             // 直接读取所有可用数据并添加到队列中
             _smallBatchDataQueue.Enqueue(_serialPort.ReadExisting());
         }
-        private async Task ProcessSmallBatchDataAsync(CancellationToken cancellationToken)
+        private void ProcessSmallBatchData(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -768,7 +768,7 @@ namespace ZQcom.ViewModels
                 else
                 {
                     // 如果队列为空，等待一段时间再检查
-                    await Task.Delay(10, cancellationToken);
+                    Thread.Sleep(10); // 使用 Thread.Sleep 替代 await Task.Delay
                 }
             }
         }
@@ -780,34 +780,27 @@ namespace ZQcom.ViewModels
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         /// 目前只适用小批量数据接收模式
-        private async Task ProcessDataAsync(CancellationToken cancellationToken)
+        private void ProcessData(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested || _dataToProcessQueue.Count > 0)
             {
                 if (_dataToProcessQueue.TryDequeue(out string data))
                 {
-                    string extractedData=data;
+                    string extractedData = data;
 
                     // 截取数据
                     if (IsExtractedData)
                     {
-
                         // 检查起始位置
-                        if (Length != -1&& StartPosition < 1)
+                        if (Length != -1 && StartPosition < 1)
                         {
                             MessageBox.Show("起始位置不能小于等于0，请重新输入！");
                             IsExtractedData = false; // 关闭截取数据
                             return;
                         }
 
-                        // ----根据是否发送16进制数据进行不同处理----
-              
                         // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
                         string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
-
-                        //// 最终转换的浮点数据,默认为0
-                        //float floatValue = 0.0f;
-
 
                         // ------检查数据长度-----
                         // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
@@ -817,13 +810,15 @@ namespace ZQcom.ViewModels
                         }
                         else
                         {
-                            if (StartPosition-1 + Length <= hexDataWithoutSpaces.Length)
+                            if (StartPosition - 1 + Length > hexDataWithoutSpaces.Length)
                             {
                                 ConvertedDataMessage("长度不足");
                             }
-
-                            // 截取数据
-                            extractedData = hexDataWithoutSpaces.Substring(StartPosition-1, Length);
+                            else
+                            {
+                                // 截取数据
+                                extractedData = hexDataWithoutSpaces.Substring(StartPosition - 1, Length);
+                            }
                         }
 
                         // 显示截取的数据
@@ -843,7 +838,7 @@ namespace ZQcom.ViewModels
                                 lock (_processedDataBuffer)
                                 {
                                     _processedDataBuffer.Append(result);
-                                    _processedDataBuffer.AppendLine();// 添加换行符
+                                    _processedDataBuffer.AppendLine(); // 添加换行符
                                 }
                             }
                         }
@@ -857,9 +852,19 @@ namespace ZQcom.ViewModels
                 else
                 {
                     // 如果队列为空，等待一段时间再检查
-                    await Task.Delay(15, cancellationToken);
+                    Thread.Sleep(15); // 使用 Thread.Sleep 替代 await Task.Delay
                 }
             }
+
+            // 更新UI上的处理结果（如果还有未处理的数据）
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (_processedDataBuffer.Length > 0)
+                {
+                    ConvertedText += _processedDataBuffer.ToString();
+                    _processedDataBuffer.Clear();
+                }
+            });
         }
 
 
