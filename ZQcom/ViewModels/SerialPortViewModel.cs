@@ -115,7 +115,7 @@ namespace ZQcom.ViewModels
 
 
             // --------------定时器相关-------------- 
-            _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.01) };
+            _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.05) };
             _uiUpdateTimer.Tick += (sender, args) => UpdateUI();
             _uiUpdateTimer.Start();
         }
@@ -347,6 +347,8 @@ namespace ZQcom.ViewModels
             }
         }
 
+
+
         // ---------接收打印数据--------
 
 
@@ -416,7 +418,7 @@ namespace ZQcom.ViewModels
         }
 
 
-        /// -----------小批量数据接收---------
+        /// ---------------小批量数据接收-------------
        
 
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
@@ -428,6 +430,20 @@ namespace ZQcom.ViewModels
 
                 _smallBatchDataQueue.Add(_serialPort.ReadExisting());
 
+        }
+
+        // 用于累积日志数据
+        private readonly StringBuilder _logBuffer = new(); 
+        private void LogMessageSmallBatch(ref string inputData)
+        {
+            // 缓存当前时间的格式化字符串
+            var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+
+            // 使用 AppendFormat 减少方法调用次数
+            lock (_logBuffer)
+            {
+                _logBuffer.AppendFormat("[{0}]>> {1}{2}", now, inputData, Environment.NewLine);
+            }
         }
 
         private void ProcessSmallBatchData(CancellationToken cancellationToken)
@@ -445,7 +461,7 @@ namespace ZQcom.ViewModels
                     // 将数据添加到处理队列中
                     if (IsExtractedData || IsConvertedData)
                     {
-                        _dataToProcessQueue.Add(data);
+                        _dataToProcessQueue.Add(data, cancellationToken);
                     }
                 }
             }
@@ -478,6 +494,8 @@ namespace ZQcom.ViewModels
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         /// 目前只适用小批量数据接收模式
+        private readonly StringBuilder _extractedDataBuffer = new(); // 用于累积截取的数据
+        private readonly StringBuilder _convertedDataBuffer = new(); // 用于累积转换后的数据
         private void ProcessData(CancellationToken cancellationToken)
         {
             const int batchSize = 10; // 每批处理的数据数量
@@ -499,8 +517,8 @@ namespace ZQcom.ViewModels
                         break;
                     }
 
-                    // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
-                    string cleanedData = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
+                    // 使用手动遍历来移除所有空白字符（包括空格、换行符等）
+                    string cleanedData = new string(data.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
                     string extractedData = cleanedData;
 
@@ -511,7 +529,10 @@ namespace ZQcom.ViewModels
                         {
                             if (StartPosition - 1 + Length > cleanedData.Length)
                             {
-                                ConvertedDataMessage("长度不足");
+                                lock (_convertedDataBuffer) // 错误信息也累积到 _convertedDataBuffer
+                                {
+                                    _convertedDataBuffer.AppendLine("长度不足");
+                                }
                                 continue;
                             }
 
@@ -531,39 +552,50 @@ namespace ZQcom.ViewModels
                             // 转换为浮点数
                             if (float.TryParse(extractedData, out float result))
                             {
-                                lock (_processedDataBuffer)
+                                lock (_convertedDataBuffer)
                                 {
-                                    _processedDataBuffer.AppendLine(result.ToString());
+                                    _convertedDataBuffer.AppendLine(result.ToString());
                                 }
                                 batch.Add(result.ToString()); // 添加到批次列表
+
+                                // 发布事件
+                                if (IsEnableChart)
+                                    _eventAggregator.GetEvent<DataReceivedEvent>().Publish(result);
                             }
                             else
                             {
-                                ConvertedDataMessage("数据转换失败: 无法解析为浮点数");
+                                lock (_convertedDataBuffer) // 错误信息也累积到 _convertedDataBuffer
+                                {
+                                    _convertedDataBuffer.AppendLine("数据转换失败: 无法解析为浮点数");
+                                }
+
+                                // 发布事件
+                                if (IsEnableChart)
+                                    _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
                             }
                         }
                         catch (Exception ex)
                         {
                             // 记录异常，不阻塞主线程
                             Console.WriteLine($"数据转换失败：{ex.Message}");
+
+                            // 发布事件
+                            if (IsEnableChart)
+                                _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
                         }
 
-                        // 如果批次达到阈值，则更新UI
+                        // 如果批次达到阈值，则累积到缓冲区
                         if (batch.Count >= batchSize)
                         {
-                            UpdateUIWithBatch(batch);
+                            AppendBatchToBuffer(batch);
                             batch.Clear();
                         }
                     }
 
                     // 更新UI上的处理结果（每处理一批数据后更新一次）
-                    if (_processedDataBuffer.Length > 0 && batch.Count == 0)
+                    if (_convertedDataBuffer.Length > 0 && batch.Count == 0)
                     {
-                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            ConvertedText += _processedDataBuffer.ToString();
-                            _processedDataBuffer.Clear();
-                        }));
+                        // 不再直接更新UI，而是累积到缓冲区
                     }
                 }
             }
@@ -572,43 +604,29 @@ namespace ZQcom.ViewModels
                 // 最终更新UI上的处理结果（如果有剩余未处理的数据）
                 if (batch.Count > 0)
                 {
-                    UpdateUIWithBatch(batch);
+                    AppendBatchToBuffer(batch);
                 }
 
-                if (_processedDataBuffer.Length > 0)
+                // 确保最后的数据累积到缓冲区
+                if (_convertedDataBuffer.Length > 0)
                 {
-                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        ConvertedText += _processedDataBuffer.ToString();
-                        _processedDataBuffer.Clear();
-                    }));
+                    // 这里不做任何事情，因为最终刷新由定时器完成
                 }
             }
         }
 
-        private void UpdateUIWithBatch(List<string> batch)
+        // 辅助方法：将批次添加到缓冲区
+        private void AppendBatchToBuffer(List<string> batch)
         {
-            //Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            //{
-                ConvertedText += string.Join(Environment.NewLine, batch) + Environment.NewLine;
-            //}));
-        }
-
-
-        // 用于累积数据处理结果
-        private StringBuilder _processedDataBuffer = new StringBuilder();
-        private StringBuilder _logBuffer = new StringBuilder(); // 用于累积日志数据
-        private void LogMessageSmallBatch(ref string inputData)
-        {
-            // 缓存当前时间的格式化字符串
-            var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-
-            // 使用 AppendFormat 减少方法调用次数
-            lock (_logBuffer)
+            lock (_convertedDataBuffer)
             {
-                _logBuffer.AppendFormat("[{0}]>> {1}{2}", now, inputData, Environment.NewLine);
+                foreach (var item in batch)
+                {
+                    _convertedDataBuffer.AppendLine(item);
+                }
             }
         }
+
 
 
         // -------刷新UI-------
@@ -620,43 +638,64 @@ namespace ZQcom.ViewModels
             int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
 
             // 更新UI上的ReceiveNum
-             Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
-                ReceiveBytes += bytes;
-            });
+            ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
+            ReceiveBytes += bytes;
 
-            // 处理缓冲区
-            if (_logBuffer.Length > 0)
+            // 更新日志
+            if(_logBuffer.Length>0)
             {
-                // 异步更新UI
-                Application.Current.Dispatcher.InvokeAsync(() =>
+                lock (_logBuffer)
                 {
-                    lock (_logBuffer)
-                    {
-                        TextEditor?.AppendText(_logBuffer.ToString());
-                        _logBuffer.Clear(); // 清空缓冲区
-                    }
-                });
+                    TextEditor?.AppendText(_logBuffer.ToString());
+                    _logBuffer.Clear();
+                }
             }
 
-            // 更新数据处理结果
-            if (_processedDataBuffer.Length > 0)
+            // 更新截取的数据
+            if (_extractedDataBuffer.Length > 0)
             {
-                 Application.Current.Dispatcher.InvokeAsync(() =>
+                lock (_extractedDataBuffer)
                 {
-                    lock (_processedDataBuffer)
-                    {
-                        ConvertedText += _processedDataBuffer.ToString();
-                        _processedDataBuffer.Clear();
-                    }
-                });
+                    ExtractedText += _extractedDataBuffer.ToString();
+                    _extractedDataBuffer.Clear();
+                }
+            }
 
+            // 更新转换后的数据
+            if (_convertedDataBuffer.Length > 0)
+            {
+                lock (_convertedDataBuffer)
+                {
+                    ConvertedText += _convertedDataBuffer.ToString();
+                    _convertedDataBuffer.Clear();
+                }
+            }
+        }
+
+        // 发送截取数据
+        private void ExtractedDataMessage(string data)
+        {
+            lock (_extractedDataBuffer)
+            {
+                _extractedDataBuffer.AppendLine(data);
+            }
+        }
+
+        // 发送处理过的数据
+        private void ConvertedDataMessage(string data)
+        {
+            lock (_convertedDataBuffer)
+            {
+                _convertedDataBuffer.AppendLine(data);
             }
         }
 
 
-        // 启用/禁用定时发送
+
+
+        /// <summary>
+        /// 启用/禁用定时发送
+        /// </summary>
         private async void ToggleTimedSend()
         {
             if (_isTimedSendEnabled)
@@ -711,8 +750,6 @@ namespace ZQcom.ViewModels
 
 
 
-
-
         // 判断是否为有效的十六进制字符串
         public bool IsHexString(string input)
         {
@@ -756,18 +793,7 @@ namespace ZQcom.ViewModels
                 LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
             }
         }
-        // 发送截取数据
-        private void ExtractedDataMessage(string data)
-        {
-            // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
-            ExtractedText += $"{data}{Environment.NewLine}";
-        }
-        // 发送处理过的数据
-        private void ConvertedDataMessage(string data)
-        {
-            // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
-            ConvertedText += $"{data}{Environment.NewLine}";
-        }
+
 
         // 发送到处理数据框
         // 只有当IsProcessData 为 true 时才进行处理
