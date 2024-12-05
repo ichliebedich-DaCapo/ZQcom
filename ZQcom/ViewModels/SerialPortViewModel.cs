@@ -52,7 +52,7 @@ namespace ZQcom.ViewModels
         private bool _isExtractedData = false;                      // 是否处理数据
         private bool _isConvertedData = false;                      // 是否转换数据
         private int _startPosition = 7;                             // 数据处理的起始位置
-        private int _length = 8;                                    // 数据处理的长度
+        private int _length = -1;                                    // 数据处理的长度
         private bool _isDisableTimestamp = false;                   // 是否禁用时间戳
         private int _receiveBytes = 0;                              // 接收到的字节数
         private int _sendBytes = 0;                                 // 发送的字节数
@@ -341,6 +341,14 @@ namespace ZQcom.ViewModels
             get => _startPosition;
             set
             {
+                // 检查起始位置
+                if (Length != -1 && value < 1)
+                {
+                    MessageBox.Show("起始位置不能小于等于0，请重新输入！");
+                    IsExtractedData = false; // 关闭截取数据
+                    _startPosition = 1;
+                    return;
+                }
                 _startPosition = value;
                 RaisePropertyChanged(nameof(StartPosition));
             }
@@ -352,6 +360,14 @@ namespace ZQcom.ViewModels
             get => _length;
             set
             {
+                if(value<-1)
+                {
+                    MessageBox.Show("-1即表示全长。长度不能小于-1，请重新输入！");
+                    IsExtractedData = false;
+                    _length = -1;
+                    return;
+                }
+
                 _length = value;
                 RaisePropertyChanged(nameof(Length));
             }
@@ -782,43 +798,31 @@ namespace ZQcom.ViewModels
         /// 目前只适用小批量数据接收模式
         private void ProcessData(CancellationToken cancellationToken)
         {
+            const int batchSize = 10; // 每批处理的数据数量
+            var batch = new List<string>(batchSize);
+
             while (!cancellationToken.IsCancellationRequested || _dataToProcessQueue.Count > 0)
             {
                 if (_dataToProcessQueue.TryDequeue(out string data))
                 {
-                    string extractedData = data;
+                    // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
+                    string cleanedData = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
+
+                    string extractedData = cleanedData;
 
                     // 截取数据
                     if (IsExtractedData)
                     {
-                        // 检查起始位置
-                        if (Length != -1 && StartPosition < 1)
+                        if (Length > 0)
                         {
-                            MessageBox.Show("起始位置不能小于等于0，请重新输入！");
-                            IsExtractedData = false; // 关闭截取数据
-                            return;
-                        }
-
-                        // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
-                        string hexDataWithoutSpaces = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
-
-                        // ------检查数据长度-----
-                        // 增加了判断条件，当长度为-1时，表示从起始位置到末尾
-                        if (Length == -1)
-                        {
-                            extractedData = hexDataWithoutSpaces;
-                        }
-                        else
-                        {
-                            if (StartPosition - 1 + Length > hexDataWithoutSpaces.Length)
+                            if (StartPosition - 1 + Length > cleanedData.Length)
                             {
                                 ConvertedDataMessage("长度不足");
+                                continue;
                             }
-                            else
-                            {
-                                // 截取数据
-                                extractedData = hexDataWithoutSpaces.Substring(StartPosition - 1, Length);
-                            }
+
+                            // 截取数据
+                            extractedData = cleanedData.Substring(StartPosition - 1, Length);
                         }
 
                         // 显示截取的数据
@@ -830,41 +834,73 @@ namespace ZQcom.ViewModels
                     {
                         try
                         {
-                            var convertedData = new StringBuilder(extractedData);
-
                             // 转换为浮点数
-                            if (float.TryParse(convertedData.ToString(), out float result))
+                            if (float.TryParse(extractedData, out float result))
                             {
                                 lock (_processedDataBuffer)
                                 {
-                                    _processedDataBuffer.Append(result);
-                                    _processedDataBuffer.AppendLine(); // 添加换行符
+                                    _processedDataBuffer.AppendLine(result.ToString());
                                 }
+                                batch.Add(result.ToString()); // 添加到批次列表
+                            }
+                            else
+                            {
+                                ConvertedDataMessage("数据转换失败: 无法解析为浮点数");
                             }
                         }
                         catch (Exception ex)
                         {
-                            // 处理异常
-                            MessageBox.Show("数据转换失败：" + ex.Message);
+                            // 记录异常，不阻塞主线程
+                            Console.WriteLine($"数据转换失败：{ex.Message}");
+                        }
+
+                        // 如果批次达到阈值，则更新UI
+                        if (batch.Count >= batchSize)
+                        {
+                            UpdateUIWithBatch(batch);
+                            batch.Clear();
                         }
                     }
                 }
                 else
                 {
                     // 如果队列为空，等待一段时间再检查
-                    Thread.Sleep(15); // 使用 Thread.Sleep 替代 await Task.Delay
+                    Thread.Sleep(15);
+                }
+
+                // 更新UI上的处理结果（每处理一批数据后更新一次）
+                if (_processedDataBuffer.Length > 0 && batch.Count == 0)
+                {
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        ConvertedText += _processedDataBuffer.ToString();
+                        _processedDataBuffer.Clear();
+                    }));
                 }
             }
 
-            // 更新UI上的处理结果（如果还有未处理的数据）
-            Application.Current.Dispatcher.Invoke(() =>
+            // 最终更新UI上的处理结果（如果有剩余未处理的数据）
+            if (batch.Count > 0)
             {
-                if (_processedDataBuffer.Length > 0)
+                UpdateUIWithBatch(batch);
+            }
+
+            if (_processedDataBuffer.Length > 0)
+            {
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     ConvertedText += _processedDataBuffer.ToString();
                     _processedDataBuffer.Clear();
-                }
-            });
+                }));
+            }
+        }
+
+        private void UpdateUIWithBatch(List<string> batch)
+        {
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ConvertedText += string.Join(Environment.NewLine, batch) + Environment.NewLine;
+            }));
         }
 
 
