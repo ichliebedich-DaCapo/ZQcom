@@ -62,13 +62,13 @@ namespace ZQcom.ViewModels
         private bool _isEnableChart = false;                        // 启用图表,默认不可视
 
         // 定时器相关
-        private readonly Timer _updateReceiveNumTimer; // 
+        private readonly DispatcherTimer _uiUpdateTimer; // 
 
         // 线程相关
         private CancellationTokenSource? _cancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
 
-        private readonly ConcurrentQueue<string> _receiveQueue = new ConcurrentQueue<string>();// 【生产者-消费者模式】
-        private readonly ConcurrentQueue<string> _logQueue = new ConcurrentQueue<string>();
+        private readonly ConcurrentQueue<string> _receiveQueue = new();// 【生产者-消费者模式】
+        private readonly ConcurrentQueue<string> _logQueue = new();
 
 
         // 新
@@ -76,8 +76,8 @@ namespace ZQcom.ViewModels
         private Task? _highFrequencyReceivingTask;
 
 
-        private ConcurrentQueue<string> _smallBatchDataQueue = new ConcurrentQueue<string>(); // 用于存储小批量数据的队列
-        private ConcurrentQueue<string> _dataToProcessQueue = new ConcurrentQueue<string>(); // 用于存储需要处理的数据
+        private readonly BlockingCollection<string> _smallBatchDataQueue = []; // 用于存储小批量数据的队列
+        private readonly BlockingCollection<string> _dataToProcessQueue = []; // 用于存储需要处理的数据
         private CancellationTokenSource? _smallBatchCancellationTokenSource; // 用于取消小批量数据处理任务
         private CancellationTokenSource? _dataProcessingCancellationTokenSource; // 用于取消数据处理任务
         private Task? _smallBatchReceivingTask; // 小批量数据处理任务
@@ -115,354 +115,11 @@ namespace ZQcom.ViewModels
 
 
             // --------------定时器相关-------------- 
-            _updateReceiveNumTimer = new Timer(UpdateProperties, null, 0, 100); // 每0.1秒更新一次
+            _uiUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.01) };
+            _uiUpdateTimer.Tick += (sender, args) => UpdateUI();
+            _uiUpdateTimer.Start();
         }
 
-        // ------------------------组件映射------------------------------
-        public TextEditor? TextEditor { get; set; }
-
-
-
-
-        // ------------------------数据绑定------------------------------
-        // 可用的串口列表
-        public ObservableCollection<string>? AvailablePorts { get; set; }
-        public ObservableCollection<string> SerialPortNames { get; set; }
-        public string SelectedSerialPort
-        {
-            get => _selectedSerialPort;
-            set
-            {
-                _selectedSerialPort = value;
-                RaisePropertyChanged(nameof(SelectedSerialPort));
-            }
-        }
-
-
-        // 设置波特率
-        public ObservableCollection<int> BaudRateOptions { get; set; }
-        public int SelectedBaudRate
-        {
-            get => _selectedBaudRate;
-            set
-            {
-                _selectedBaudRate = value;
-                RaisePropertyChanged(nameof(SelectedBaudRate));
-            }
-        }
-
-        // 奇偶校验
-        public ObservableCollection<Parity> ParityOptions { get; set; }
-        public Parity SelectedParity
-        {
-            get => _selectedParity;
-            set
-            {
-                _selectedParity = value;
-                RaisePropertyChanged(nameof(SelectedParity));
-            }
-        }
-
-        // 停止位
-        public ObservableCollection<StopBits> StopBitOptions { get; set; }
-        public StopBits SelectedStopBits
-        {
-            get => _selectedStopBits;
-            set
-            {
-                _selectedStopBits = value;
-                RaisePropertyChanged(nameof(SelectedStopBits));
-            }
-        }
-
-        // 数据位
-        public ObservableCollection<int> DataBitOptions { get; set; }
-        public int SelectedDataBits
-        {
-            get => _selectedDataBits;
-            set
-            {
-                _selectedDataBits = value;
-                RaisePropertyChanged(nameof(SelectedDataBits));
-            }
-        }
-
-        // 启闭串口按钮_文本
-        public string OpenCloseButtonText
-        {
-            get => _openCloseButtonText;
-            set
-            {
-                _openCloseButtonText = value;
-                RaisePropertyChanged(nameof(OpenCloseButtonText));
-            }
-        }
-
-        // 发送数据
-        public string SendDataText
-        {
-            get => _sendDataText;
-            set
-            {
-                _sendDataText = value;
-                RaisePropertyChanged(nameof(SendDataText));
-            }
-        }
-
-        // 日志框
-        public string LogText
-        {
-            get => _logText;
-            set
-            {
-                _logText = value;
-                RaisePropertyChanged(nameof(LogText));
-            }
-        }
-
-
-        // 接收数据框
-        public string ReceiveText
-        {
-            get => _receiveText;
-            set
-            {
-                _receiveText = value;
-                RaisePropertyChanged(nameof(ReceiveText));
-            }
-        }
-
-        // 截取数据框
-        public string ExtractedText
-        {
-            get => _extractedText;
-            set
-            {
-                _extractedText = value;
-                RaisePropertyChanged(nameof(ExtractedText));
-            }
-        }
-
-
-        // 转换数据框
-        public string ConvertedText
-        {
-            get => _convertedText;
-            set
-            {
-                _convertedText = value;
-                RaisePropertyChanged(nameof(ConvertedText));
-            }
-        }
-
-        // 十六进制
-        public bool IsHexSend
-        {
-            get => _isHexSend;
-            set
-            {
-                _isHexSend = value;
-                RaisePropertyChanged(nameof(IsHexSend));
-            }
-        }
-
-        // 十六进制显示
-        public bool IsHexDisplay
-        {
-            get => _isHexDisplay;
-            set
-            {
-                _isHexDisplay = value;
-                RaisePropertyChanged(nameof(IsHexDisplay));
-            }
-        }
-
-        // 添加回车
-        public bool AddNewline
-        {
-            get => _addNewline;
-            set
-            {
-                _addNewline = value;
-                RaisePropertyChanged(nameof(AddNewline));
-            }
-        }
-
-
-        // 定时发送
-        public bool IsTimedSendEnabled
-        {
-            get => _isTimedSendEnabled;
-            set
-            {
-                _isTimedSendEnabled = value;
-                RaisePropertyChanged(nameof(IsTimedSendEnabled));
-            }
-        }
-
-        // 定时发送间隔
-        public int TimedSendInterval
-        {
-            get => _timedSendInterval;
-            set
-            {
-                _timedSendInterval = value;
-                RaisePropertyChanged(nameof(TimedSendInterval));
-            }
-        }
-
-
-        // 是否处理数据
-        public bool IsExtractedData
-        {
-            get => _isExtractedData;
-            set
-            {
-                _isExtractedData = value;
-                RaisePropertyChanged(nameof(IsExtractedData));
-            }
-        }
-
-        // 是否转换数据
-        public bool IsConvertedData
-        {
-            get => _isConvertedData;
-            set
-            {
-                _isConvertedData = value;
-                RaisePropertyChanged(nameof(IsConvertedData));
-            }
-        }
-
-
-        // 截取数据的起始位置
-        public int StartPosition
-        {
-            get => _startPosition;
-            set
-            {
-                // 检查起始位置
-                if (Length != -1 && value < 1)
-                {
-                    MessageBox.Show("起始位置不能小于等于0，请重新输入！");
-                    IsExtractedData = false; // 关闭截取数据
-                    _startPosition = 1;
-                    return;
-                }
-                _startPosition = value;
-                RaisePropertyChanged(nameof(StartPosition));
-            }
-        }
-
-        // 截取数据的长度
-        public int Length
-        {
-            get => _length;
-            set
-            {
-                if(value<-1)
-                {
-                    MessageBox.Show("-1即表示全长。长度不能小于-1，请重新输入！");
-                    IsExtractedData = false;
-                    _length = -1;
-                    return;
-                }
-
-                _length = value;
-                RaisePropertyChanged(nameof(Length));
-            }
-        }
-
-
-        // 是否禁用时间戳
-        public bool IsDisableTimestamp
-        {
-            get => _isDisableTimestamp;
-            set
-            {
-                _isDisableTimestamp = value;
-                RaisePropertyChanged(nameof(IsDisableTimestamp));
-            }
-        }
-
-
-        // 接收的字节数、数量，发送的字节数、数量
-        public int ReceiveBytes
-        {
-            get => _receiveBytes;
-            set
-            {
-                _receiveBytes = value;
-                RaisePropertyChanged(nameof(ReceiveBytes));
-            }
-        }
-        public int SendBytes
-        {
-            get => _sendBytes;
-            set
-            {
-                _sendBytes = value;
-                RaisePropertyChanged(nameof(SendBytes));
-            }
-        }
-        public int ReceiveNum
-        {
-            get => _receiveNum;
-            set
-            {
-                _receiveNum = value;
-                RaisePropertyChanged(nameof(ReceiveNum));
-            }
-        }
-        public int SendNum
-        {
-            get => _sendNum;
-            set
-            {
-                _sendNum = value;
-                RaisePropertyChanged(nameof(SendNum));
-            }
-        }
-
-        // 待处理数量
-        public int PendingNum
-        {
-            get => _pendingQueueSize;
-            set
-            {
-                _pendingQueueSize = value;
-                RaisePropertyChanged(nameof(PendingNum));
-            }
-        }
-
-        // 图表可视属性
-        public System.Windows.Visibility ChartVisibility
-        {
-            get
-            {
-                if (IsEnableChart)
-                {
-                    return System.Windows.Visibility.Visible;
-                }
-                else
-                {
-                    return System.Windows.Visibility.Hidden;
-                }
-            }
-        }
-
-
-        // 启用图表
-        public bool IsEnableChart
-        {
-            get => _isEnableChart;
-            set
-            {
-                _isEnableChart = value;
-                RaisePropertyChanged(nameof(IsEnableChart));
-                RaisePropertyChanged(nameof(ChartVisibility));
-            }
-        }
 
 
         // ---------------------------------私有方法----------------------------------------
@@ -760,32 +417,57 @@ namespace ZQcom.ViewModels
 
 
         /// -----------小批量数据接收---------
+       
+
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Add(ref _backgroundReceiveBytes, _serialPort.BytesToRead);
             Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
 
             // 直接读取所有可用数据并添加到队列中
-            _smallBatchDataQueue.Enqueue(_serialPort.ReadExisting());
+
+                _smallBatchDataQueue.Add(_serialPort.ReadExisting());
+
         }
+
         private void ProcessSmallBatchData(CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                if (_smallBatchDataQueue.TryDequeue(out string data))
+                while (!cancellationToken.IsCancellationRequested)
                 {
+                    // Take 将阻塞当前线程，直到队列中有数据可用或取消标记被触发
+                    string data = _smallBatchDataQueue.Take(cancellationToken);
+
                     // 打印数据
                     LogMessageSmallBatch(ref data);
 
                     // 将数据添加到处理队列中
                     if (IsExtractedData || IsConvertedData)
-                        _dataToProcessQueue.Enqueue(data);
+                    {
+                        _dataToProcessQueue.Add(data);
+                    }
                 }
-                else
-                {
-                    // 如果队列为空，等待一段时间再检查
-                    Thread.Sleep(10); // 使用 Thread.Sleep 替代 await Task.Delay
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 如果取消请求被触发，则退出循环
+                Console.WriteLine("处理小批量数据的任务已被取消。");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("collection was completed"))
+            {
+                // 如果集合被标记为完成且队列为空，则正常退出
+                Console.WriteLine("处理小批量数据的任务已完成。");
+            }
+            catch (Exception ex)
+            {
+                // 处理其他异常
+                Console.WriteLine($"处理小批量数据时发生错误: {ex.Message}");
+            }
+            finally
+            {
+                // 完成后确保清理资源
+                _smallBatchDataQueue.CompleteAdding();
             }
         }
 
@@ -801,10 +483,22 @@ namespace ZQcom.ViewModels
             const int batchSize = 10; // 每批处理的数据数量
             var batch = new List<string>(batchSize);
 
-            while (!cancellationToken.IsCancellationRequested || _dataToProcessQueue.Count > 0)
+            try
             {
-                if (_dataToProcessQueue.TryDequeue(out string data))
+                while (!cancellationToken.IsCancellationRequested || !_dataToProcessQueue.IsCompleted)
                 {
+                    string data;
+                    try
+                    {
+                        // Take 将阻塞当前线程，直到队列中有数据可用或取消标记被触发
+                        data = _dataToProcessQueue.Take(cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 如果取消请求被触发，则退出循环
+                        break;
+                    }
+
                     // 移除空格是因为当开启16进制显示时，字符串中会包含空格、换行
                     string cleanedData = data.Replace(" ", "").Replace("\n", "").Replace("\r", "");
 
@@ -861,37 +555,34 @@ namespace ZQcom.ViewModels
                             batch.Clear();
                         }
                     }
+
+                    // 更新UI上的处理结果（每处理一批数据后更新一次）
+                    if (_processedDataBuffer.Length > 0 && batch.Count == 0)
+                    {
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            ConvertedText += _processedDataBuffer.ToString();
+                            _processedDataBuffer.Clear();
+                        }));
+                    }
                 }
-                else
+            }
+            finally
+            {
+                // 最终更新UI上的处理结果（如果有剩余未处理的数据）
+                if (batch.Count > 0)
                 {
-                    // 如果队列为空，等待一段时间再检查
-                    Thread.Sleep(15);
+                    UpdateUIWithBatch(batch);
                 }
 
-                // 更新UI上的处理结果（每处理一批数据后更新一次）
-                if (_processedDataBuffer.Length > 0 && batch.Count == 0)
+                if (_processedDataBuffer.Length > 0)
                 {
-                    //Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    //{
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
                         ConvertedText += _processedDataBuffer.ToString();
                         _processedDataBuffer.Clear();
-                    //}));
+                    }));
                 }
-            }
-
-            // 最终更新UI上的处理结果（如果有剩余未处理的数据）
-            if (batch.Count > 0)
-            {
-                UpdateUIWithBatch(batch);
-            }
-
-            if (_processedDataBuffer.Length > 0)
-            {
-                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    ConvertedText += _processedDataBuffer.ToString();
-                    _processedDataBuffer.Clear();
-                }));
             }
         }
 
@@ -920,16 +611,16 @@ namespace ZQcom.ViewModels
         }
 
 
-        // -------刷新接收数据-------
+        // -------刷新UI-------
         private int _backgroundReceiveCount; // 后台计数器
         private int _backgroundReceiveBytes; // 后台计数器
-        private async void UpdateProperties(object state)
+        private void UpdateUI()
         {
             int count = Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 获取并重置后台计数器
             int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
 
             // 更新UI上的ReceiveNum
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+             Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
                 ReceiveBytes += bytes;
@@ -939,7 +630,7 @@ namespace ZQcom.ViewModels
             if (_logBuffer.Length > 0)
             {
                 // 异步更新UI
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     lock (_logBuffer)
                     {
@@ -952,7 +643,7 @@ namespace ZQcom.ViewModels
             // 更新数据处理结果
             if (_processedDataBuffer.Length > 0)
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                 Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     lock (_processedDataBuffer)
                     {
@@ -1276,6 +967,351 @@ namespace ZQcom.ViewModels
 
 
 
+        // ------------------------组件映射------------------------------
+        public TextEditor? TextEditor { get; set; }
+
+
+
+
+        // ------------------------数据绑定------------------------------
+        // 可用的串口列表
+        public ObservableCollection<string>? AvailablePorts { get; set; }
+        public ObservableCollection<string> SerialPortNames { get; set; }
+        public string SelectedSerialPort
+        {
+            get => _selectedSerialPort;
+            set
+            {
+                _selectedSerialPort = value;
+                RaisePropertyChanged(nameof(SelectedSerialPort));
+            }
+        }
+
+
+        // 设置波特率
+        public ObservableCollection<int> BaudRateOptions { get; set; }
+        public int SelectedBaudRate
+        {
+            get => _selectedBaudRate;
+            set
+            {
+                _selectedBaudRate = value;
+                RaisePropertyChanged(nameof(SelectedBaudRate));
+            }
+        }
+
+        // 奇偶校验
+        public ObservableCollection<Parity> ParityOptions { get; set; }
+        public Parity SelectedParity
+        {
+            get => _selectedParity;
+            set
+            {
+                _selectedParity = value;
+                RaisePropertyChanged(nameof(SelectedParity));
+            }
+        }
+
+        // 停止位
+        public ObservableCollection<StopBits> StopBitOptions { get; set; }
+        public StopBits SelectedStopBits
+        {
+            get => _selectedStopBits;
+            set
+            {
+                _selectedStopBits = value;
+                RaisePropertyChanged(nameof(SelectedStopBits));
+            }
+        }
+
+        // 数据位
+        public ObservableCollection<int> DataBitOptions { get; set; }
+        public int SelectedDataBits
+        {
+            get => _selectedDataBits;
+            set
+            {
+                _selectedDataBits = value;
+                RaisePropertyChanged(nameof(SelectedDataBits));
+            }
+        }
+
+        // 启闭串口按钮_文本
+        public string OpenCloseButtonText
+        {
+            get => _openCloseButtonText;
+            set
+            {
+                _openCloseButtonText = value;
+                RaisePropertyChanged(nameof(OpenCloseButtonText));
+            }
+        }
+
+        // 发送数据
+        public string SendDataText
+        {
+            get => _sendDataText;
+            set
+            {
+                _sendDataText = value;
+                RaisePropertyChanged(nameof(SendDataText));
+            }
+        }
+
+        // 日志框
+        public string LogText
+        {
+            get => _logText;
+            set
+            {
+                _logText = value;
+                RaisePropertyChanged(nameof(LogText));
+            }
+        }
+
+
+        // 接收数据框
+        public string ReceiveText
+        {
+            get => _receiveText;
+            set
+            {
+                _receiveText = value;
+                RaisePropertyChanged(nameof(ReceiveText));
+            }
+        }
+
+        // 截取数据框
+        public string ExtractedText
+        {
+            get => _extractedText;
+            set
+            {
+                _extractedText = value;
+                RaisePropertyChanged(nameof(ExtractedText));
+            }
+        }
+
+
+        // 转换数据框
+        public string ConvertedText
+        {
+            get => _convertedText;
+            set
+            {
+                _convertedText = value;
+                RaisePropertyChanged(nameof(ConvertedText));
+            }
+        }
+
+        // 十六进制
+        public bool IsHexSend
+        {
+            get => _isHexSend;
+            set
+            {
+                _isHexSend = value;
+                RaisePropertyChanged(nameof(IsHexSend));
+            }
+        }
+
+        // 十六进制显示
+        public bool IsHexDisplay
+        {
+            get => _isHexDisplay;
+            set
+            {
+                _isHexDisplay = value;
+                RaisePropertyChanged(nameof(IsHexDisplay));
+            }
+        }
+
+        // 添加回车
+        public bool AddNewline
+        {
+            get => _addNewline;
+            set
+            {
+                _addNewline = value;
+                RaisePropertyChanged(nameof(AddNewline));
+            }
+        }
+
+
+        // 定时发送
+        public bool IsTimedSendEnabled
+        {
+            get => _isTimedSendEnabled;
+            set
+            {
+                _isTimedSendEnabled = value;
+                RaisePropertyChanged(nameof(IsTimedSendEnabled));
+            }
+        }
+
+        // 定时发送间隔
+        public int TimedSendInterval
+        {
+            get => _timedSendInterval;
+            set
+            {
+                _timedSendInterval = value;
+                RaisePropertyChanged(nameof(TimedSendInterval));
+            }
+        }
+
+
+        // 是否处理数据
+        public bool IsExtractedData
+        {
+            get => _isExtractedData;
+            set
+            {
+                _isExtractedData = value;
+                RaisePropertyChanged(nameof(IsExtractedData));
+            }
+        }
+
+        // 是否转换数据
+        public bool IsConvertedData
+        {
+            get => _isConvertedData;
+            set
+            {
+                _isConvertedData = value;
+                RaisePropertyChanged(nameof(IsConvertedData));
+            }
+        }
+
+
+        // 截取数据的起始位置
+        public int StartPosition
+        {
+            get => _startPosition;
+            set
+            {
+                // 检查起始位置
+                if (Length != -1 && value < 1)
+                {
+                    MessageBox.Show("起始位置不能小于等于0，请重新输入！");
+                    IsExtractedData = false; // 关闭截取数据
+                    _startPosition = 1;
+                    return;
+                }
+                _startPosition = value;
+                RaisePropertyChanged(nameof(StartPosition));
+            }
+        }
+
+        // 截取数据的长度
+        public int Length
+        {
+            get => _length;
+            set
+            {
+                if (value < -1)
+                {
+                    MessageBox.Show("-1即表示全长。长度不能小于-1，请重新输入！");
+                    IsExtractedData = false;
+                    _length = -1;
+                    return;
+                }
+
+                _length = value;
+                RaisePropertyChanged(nameof(Length));
+            }
+        }
+
+
+        // 是否禁用时间戳
+        public bool IsDisableTimestamp
+        {
+            get => _isDisableTimestamp;
+            set
+            {
+                _isDisableTimestamp = value;
+                RaisePropertyChanged(nameof(IsDisableTimestamp));
+            }
+        }
+
+
+        // 接收的字节数、数量，发送的字节数、数量
+        public int ReceiveBytes
+        {
+            get => _receiveBytes;
+            set
+            {
+                _receiveBytes = value;
+                RaisePropertyChanged(nameof(ReceiveBytes));
+            }
+        }
+        public int SendBytes
+        {
+            get => _sendBytes;
+            set
+            {
+                _sendBytes = value;
+                RaisePropertyChanged(nameof(SendBytes));
+            }
+        }
+        public int ReceiveNum
+        {
+            get => _receiveNum;
+            set
+            {
+                _receiveNum = value;
+                RaisePropertyChanged(nameof(ReceiveNum));
+            }
+        }
+        public int SendNum
+        {
+            get => _sendNum;
+            set
+            {
+                _sendNum = value;
+                RaisePropertyChanged(nameof(SendNum));
+            }
+        }
+
+        // 待处理数量
+        public int PendingNum
+        {
+            get => _pendingQueueSize;
+            set
+            {
+                _pendingQueueSize = value;
+                RaisePropertyChanged(nameof(PendingNum));
+            }
+        }
+
+        // 图表可视属性
+        public System.Windows.Visibility ChartVisibility
+        {
+            get
+            {
+                if (IsEnableChart)
+                {
+                    return System.Windows.Visibility.Visible;
+                }
+                else
+                {
+                    return System.Windows.Visibility.Hidden;
+                }
+            }
+        }
+
+
+        // 启用图表
+        public bool IsEnableChart
+        {
+            get => _isEnableChart;
+            set
+            {
+                _isEnableChart = value;
+                RaisePropertyChanged(nameof(IsEnableChart));
+                RaisePropertyChanged(nameof(ChartVisibility));
+            }
+        }
 
 
 
