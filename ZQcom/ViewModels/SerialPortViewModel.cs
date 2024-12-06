@@ -643,13 +643,13 @@ namespace ZQcom.ViewModels
                                 // 将字节数组转换为32位浮点数
                                 convertedBatch.Add(BitConverter.ToSingle(bytes, 0).ToString());
                             }
-
                         }
                         else
                         {
                             // 不开启十六进制转换
                             try
                             {
+                                // 【隐患】这一个函数有大问题，如果是不符合的函数，会直接导致程序崩溃，根本不处理。这个轮子显然造得很差劲
                                 // 转换为浮点数
                                 if (float.TryParse(extractedData, out float result))
                                 {
