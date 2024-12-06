@@ -772,21 +772,6 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 发送处理过的数据
-        private void ConvertedDataMessage(string data)
-        {
-            lock (_convertedDataBuffer)
-            {
-                _convertedDataBuffer.AppendLine(data);
-            }
-        }
-
-
-
-
-
-
-
 
         // 判断是否为有效的十六进制字符串
         public bool IsHexString(string input)
