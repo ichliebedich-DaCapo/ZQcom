@@ -150,26 +150,17 @@
 
                         <!-- 左边部分 -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <ComboBox Name="CmbSerialPorts" 
-                  ItemsSource="{Binding SerialPortViewModel.SerialPortNames}" 
-                  SelectedItem="{Binding SerialPortViewModel.SelectedSerialPort}" 
-                  Width="80" Margin="0,0,10,0" />
-                            <Button Content="刷新" 
-                Command="{Binding SerialPortViewModel.RefreshSerialPortsCommand}" 
-                Width="80" Margin="10,0,0,0" />
-                            <Button Content="{Binding SerialPortViewModel.OpenCloseButtonText}" 
-                Command="{Binding SerialPortViewModel.ToggleSerialPortCommand}" 
-                Width="80" Margin="10,0,0,0" />
+                            <ComboBox Name="CmbSerialPorts"  ItemsSource="{Binding SerialPortViewModel.SerialPortNames}"  SelectedItem="{Binding SerialPortViewModel.SelectedSerialPort}" 
+                            Width="80" Margin="0,0,10,0" />
+                            <Button Content="刷新"  Command="{Binding SerialPortViewModel.RefreshSerialPortsCommand}"   Width="80" Margin="10,0,0,0" />
+                            <Button Content="{Binding SerialPortViewModel.OpenCloseButtonText}"  Command="{Binding SerialPortViewModel.ToggleSerialPortCommand}"  Width="80" Margin="10,0,0,0" />
                         </StackPanel>
 
                         <!-- 右边部分 -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <CheckBox Content="禁用时间戳" 
-                  IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}" 
-                  Margin="10,0,10,0" Height="14" />
-                            <Button Content="标记" 
-                Command="{Binding SerialPortViewModel.SignCommand}" 
-                Margin="0,0,0,0" Width="60" />
+                            <CheckBox Content="高频接收模式"  IsChecked="{Binding SerialPortViewModel.IsHighFrequencyReceiving}"  Margin="10,0,10,0" Height="14" />
+                            <CheckBox Content="禁用时间戳"  IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}"  Margin="10,0,10,0" Height="14" />
+                            <Button Content="标记"  Command="{Binding SerialPortViewModel.SignCommand}"  Margin="0,0,0,0" Width="60" />
                         </StackPanel>
                     </Grid>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">

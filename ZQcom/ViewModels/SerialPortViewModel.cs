@@ -52,7 +52,9 @@ namespace ZQcom.ViewModels
         private bool _isExtractedData = false;                      // 是否处理数据
         private bool _isConvertedData = false;                      // 是否转换数据
         private int _startPosition = 7;                             // 数据处理的起始位置
-        private int _length = -1;                                    // 数据处理的长度
+        private int _length = -1;                                   // 数据处理的长度
+        private bool _isHighFrequencyReceiving = false;             // 是否高频接收
+        private bool _oldIsHighFrequencyReceiving;                  // 上一次是否高频接收
         private bool _isDisableTimestamp = false;                   // 是否禁用时间戳
         private int _receiveBytes = 0;                              // 接收到的字节数
         private int _sendBytes = 0;                                 // 发送的字节数
@@ -105,7 +107,6 @@ namespace ZQcom.ViewModels
             //--------------前置准备--------------
             // 刷新串口列表
             PopulateSerialPortNames();
-
 
             //发布事件
             _eventAggregator = eventAggregator;
@@ -252,11 +253,15 @@ namespace ZQcom.ViewModels
                     OpenCloseButtonText = "关闭串口";
 
                     // 启用接收
-                    StartSmallBatchReceiving();
-                    //StartHighFrequencyReceiving();
-
-
-
+                    _oldIsHighFrequencyReceiving = IsHighFrequencyReceiving;
+                    if (IsHighFrequencyReceiving)
+                    {
+                        StartHighFrequencyReceiving();
+                    }
+                    else
+                    {
+                        StartSmallBatchReceiving();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -270,8 +275,10 @@ namespace ZQcom.ViewModels
                 OpenCloseButtonText = "打开串口";
 
                 // 关闭接收
-                StopSmallBatchReceiving();
-                //StopHighFrequencyReceiving();
+                if (_oldIsHighFrequencyReceiving)
+                    StopHighFrequencyReceiving();
+                else
+                    StopSmallBatchReceiving();
 
                 // ---执行清理工作---
                 _serialPort.Dispose();
@@ -356,7 +363,7 @@ namespace ZQcom.ViewModels
 
 
         /// -------------高频接收模式--------------
-        private SemaphoreSlim _dataAvailableSignal = new SemaphoreSlim(0); // 信号量
+        private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
@@ -372,7 +379,7 @@ namespace ZQcom.ViewModels
                 await _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
                 try
                 {
-                    while (_serialPort.BytesToRead > 0)
+                    while (_serialPort?.BytesToRead > 0)
                     {
                         var buffer = new byte[Math.Min(_serialPort.BytesToRead, BatchSize)];
                         int bytesRead = _serialPort.Read(buffer, 0, buffer.Length);
@@ -430,9 +437,7 @@ namespace ZQcom.ViewModels
             Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
 
             // 直接读取所有可用数据并添加到队列中
-
             _smallBatchDataQueue.Add(_serialPort.ReadExisting());
-
         }
 
         // 用于累积日志数据
@@ -515,9 +520,11 @@ namespace ZQcom.ViewModels
                         break;
                     }
 
-                    // 使用手动遍历来移除所有空白字符（包括空格、换行符等）
-                    string cleanedData = new string(data.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    // 观测有多少数据
+                    Interlocked.Add(ref _backgroundPendingNum, _dataToProcessQueue.Count);
 
+                    // 使用手动遍历来移除所有空白字符（包括空格、换行符等）
+                    string cleanedData = new(data.Where(c => !char.IsWhiteSpace(c)).ToArray());
                     string extractedData = cleanedData;
 
                     // 截取数据
@@ -539,7 +546,7 @@ namespace ZQcom.ViewModels
                         }
 
                         // 显示截取的数据
-                        ExtractedDataMessage(extractedData);
+                        AppendBatchToExtractedBuffer(extractedData);
                     }
 
                     // -----转换数据-----
@@ -556,7 +563,7 @@ namespace ZQcom.ViewModels
                                 }
                                 batch.Add(result.ToString()); // 添加到批次列表
 
-                                // 发布事件
+                                /// ----发布事件----
                                 if (IsEnableChart)
                                     _eventAggregator.GetEvent<DataReceivedEvent>().Publish(result);
                             }
@@ -567,7 +574,7 @@ namespace ZQcom.ViewModels
                                     _convertedDataBuffer.AppendLine("数据转换失败: 无法解析为浮点数");
                                 }
 
-                                // 发布事件
+                                /// ----发布事件----
                                 if (IsEnableChart)
                                     _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
                             }
@@ -577,7 +584,7 @@ namespace ZQcom.ViewModels
                             // 记录异常，不阻塞主线程
                             Debug.WriteLine($"数据转换失败：{ex.Message}");
 
-                            // 发布事件
+                            /// ----发布事件----
                             if (IsEnableChart)
                                 _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
                         }
@@ -585,15 +592,9 @@ namespace ZQcom.ViewModels
                         // 如果批次达到阈值，则累积到缓冲区
                         if (batch.Count >= batchSize)
                         {
-                            AppendBatchToBuffer(batch);
+                            AppendBatchToConvertedBuffer(batch);
                             batch.Clear();
                         }
-                    }
-
-                    // 更新UI上的处理结果（每处理一批数据后更新一次）
-                    if (_convertedDataBuffer.Length > 0 && batch.Count == 0)
-                    {
-                        // 不再直接更新UI，而是累积到缓冲区
                     }
                 }
             }
@@ -602,42 +603,30 @@ namespace ZQcom.ViewModels
                 // 最终更新UI上的处理结果（如果有剩余未处理的数据）
                 if (batch.Count > 0)
                 {
-                    AppendBatchToBuffer(batch);
-                }
-
-                // 确保最后的数据累积到缓冲区
-                if (_convertedDataBuffer.Length > 0)
-                {
-                    // 这里不做任何事情，因为最终刷新由定时器完成
+                    AppendBatchToConvertedBuffer(batch);
                 }
             }
         }
 
         // 辅助方法：将批次添加到缓冲区
-        private void AppendBatchToBuffer(List<string> batch)
-        {
-            lock (_convertedDataBuffer)
-            {
-                foreach (var item in batch)
-                {
-                    _convertedDataBuffer.AppendLine(item);
-                }
-            }
-        }
+
 
 
 
         // -------刷新UI-------
         private int _backgroundReceiveCount; // 后台计数器
         private int _backgroundReceiveBytes; // 后台计数器
+        private int _backgroundPendingNum=0; // 后台计数器
         private void UpdateUI()
         {
             int count = Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 获取并重置后台计数器
-            int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
+            int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0); // 获取并重置后台计数器
+            int pendingNum=Interlocked.Exchange(ref _backgroundPendingNum, 0);// 获取并重置后台计数器
 
             // 更新UI上的ReceiveNum
             ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
             ReceiveBytes += bytes;
+            PendingNum+=pendingNum;
 
             // 更新日志
             if (_logBuffer.Length > 0)
@@ -670,12 +659,22 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 发送截取数据
-        private void ExtractedDataMessage(string data)
+        // 截取数据
+        private void AppendBatchToExtractedBuffer(string data)
         {
             lock (_extractedDataBuffer)
             {
                 _extractedDataBuffer.AppendLine(data);
+            }
+        }
+        private void AppendBatchToConvertedBuffer(List<string> batch)
+        {
+            lock (_convertedDataBuffer)
+            {
+                foreach (var item in batch)
+                {
+                    _convertedDataBuffer.AppendLine(item);
+                }
             }
         }
 
@@ -836,7 +835,7 @@ namespace ZQcom.ViewModels
                     // 截取数据,并发送
                     processedData = hexDataWithoutSpaces.Substring(startIndex, length);
                 }
-                ExtractedDataMessage(processedData);
+                AppendBatchToExtractedBuffer(processedData);
 
 
 
@@ -985,6 +984,7 @@ namespace ZQcom.ViewModels
                 SendBytes = 0;
                 ReceiveNum = 0;
                 SendNum = 0;
+                PendingNum = 0;
                 //MessageBox.Show("已成功清屏", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
@@ -1338,7 +1338,16 @@ namespace ZQcom.ViewModels
         }
 
 
-
+        // 是否启用高频接收模式
+        public bool IsHighFrequencyReceiving
+        {
+            get => _isHighFrequencyReceiving;
+            set
+            {
+                _isHighFrequencyReceiving = value;
+                RaisePropertyChanged(nameof(IsHighFrequencyReceiving));
+            }
+        }
 
 
         //// 用于测试图表性能
