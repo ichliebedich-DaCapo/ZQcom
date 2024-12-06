@@ -33,7 +33,8 @@ namespace ZQcom.ViewModels
             _chartModel = new ChartModel();
             // 订阅事件
             _eventAggregator = eventAggregator;
-            _eventAggregator.GetEvent<DataReceivedEvent>().Subscribe(AddDataPoint);
+            // 加上ThreadOption.BackgroundThread，防止阻塞主线程，导致死锁
+            _eventAggregator.GetEvent<DataReceivedEvent>().Subscribe(AddDataPoint, ThreadOption.BackgroundThread);
         }
 
 

@@ -66,8 +66,6 @@ namespace ZQcom.ViewModels
         private readonly object _timedSendTimerLock = new();
 
         // 线程相关
-        private CancellationTokenSource? _timedSendCancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
-
         private readonly ConcurrentQueue<string> _receiveQueue = new();// 【生产者-消费者模式】
         private readonly ConcurrentQueue<string> _logQueue = new();
 
@@ -323,7 +321,10 @@ namespace ZQcom.ViewModels
                     // 停止定时发送
                     if (IsTimedSendEnabled)
                     {
-                        _timedSendCancellationTokenSource?.Cancel();
+                        // 停止并释放定时器资源
+                        _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                        _timedSendTimer?.Dispose();
+                        _timedSendTimer = null;
                         IsTimedSendEnabled = false;
                     }
                     return;
