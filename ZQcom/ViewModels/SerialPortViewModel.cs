@@ -360,8 +360,6 @@ namespace ZQcom.ViewModels
 
 
         // ---------接收打印数据--------
-
-
         /// -------------高频接收模式--------------
         private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
@@ -429,8 +427,6 @@ namespace ZQcom.ViewModels
 
 
         /// ---------------小批量数据接收-------------
-
-
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Add(ref _backgroundReceiveBytes, _serialPort.BytesToRead);
@@ -502,8 +498,11 @@ namespace ZQcom.ViewModels
         private void ProcessData(CancellationToken cancellationToken)
         {
             const int batchSize = 10; // 每批处理的数据数量
-            var batch = new List<string>(batchSize);
-
+            var convertedBatch = new List<string>(batchSize);
+            var extractedBatch = new List<string>(batchSize);
+            DateTime lastBatchProcessedTime = DateTime.UtcNow;
+            TimeSpan maxBatchProcessingInterval = TimeSpan.FromMilliseconds(500); // 最大批次处理间隔
+            var cleanedData = new StringBuilder();
             try
             {
                 while (!cancellationToken.IsCancellationRequested || !_dataToProcessQueue.IsCompleted)
@@ -524,8 +523,17 @@ namespace ZQcom.ViewModels
                     Interlocked.Exchange(ref _backgroundPendingNum, _dataToProcessQueue.Count);
 
                     // 使用手动遍历来移除所有空白字符（包括空格、换行符等）
-                    string cleanedData = new(data.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                    string extractedData = cleanedData;
+                    // 优化：避免创建新的字符串实例，直接在现有字符串上操作
+                    cleanedData.Clear();
+                    foreach (char c in data)
+                    {
+                        if (!char.IsWhiteSpace(c))
+                        {
+                            cleanedData.Append(c);
+                        }
+                    }
+                    string extractedData = cleanedData.ToString();
+
 
                     // 截取数据
                     if (IsExtractedData)
@@ -542,11 +550,19 @@ namespace ZQcom.ViewModels
                             }
 
                             // 截取数据
-                            extractedData = cleanedData.Substring(StartPosition - 1, Length);
+                            extractedData = cleanedData.ToString().Substring(StartPosition - 1, Length);
                         }
 
-                        // 显示截取的数据
-                        AppendBatchToExtractedBuffer(extractedData);
+                        // 将截取的数据添加到待处理的批次中
+                        extractedBatch.Add(extractedData);
+
+                        // 动态批次处理逻辑
+                        if (extractedBatch.Count >= batchSize || DateTime.UtcNow - lastBatchProcessedTime >= maxBatchProcessingInterval)
+                        {
+                            AppendBatchToExtractedBuffer(extractedBatch);
+                            extractedBatch.Clear();
+                            lastBatchProcessedTime = DateTime.UtcNow;
+                        }
                     }
 
                     // -----转换数据-----
@@ -557,11 +573,11 @@ namespace ZQcom.ViewModels
                             // 转换为浮点数
                             if (float.TryParse(extractedData, out float result))
                             {
-                                lock (_convertedDataBuffer)
-                                {
-                                    _convertedDataBuffer.AppendLine(result.ToString());
-                                }
-                                batch.Add(result.ToString()); // 添加到批次列表
+                                //lock (_convertedDataBuffer)
+                                //{
+                                //    _convertedDataBuffer.AppendLine(result.ToString());
+                                //}
+                                convertedBatch.Add(result.ToString()); // 添加到批次列表
 
                                 /// ----发布事件----
                                 if (IsEnableChart)
@@ -589,11 +605,12 @@ namespace ZQcom.ViewModels
                                 _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
                         }
 
-                        // 如果批次达到阈值，则累积到缓冲区
-                        if (batch.Count >= batchSize)
+                        // 动态批次处理逻辑
+                        if (convertedBatch.Count >= batchSize || DateTime.UtcNow - lastBatchProcessedTime >= maxBatchProcessingInterval)
                         {
-                            AppendBatchToConvertedBuffer(batch);
-                            batch.Clear();
+                            AppendBatchToConvertedBuffer(convertedBatch);
+                            convertedBatch.Clear();
+                            lastBatchProcessedTime = DateTime.UtcNow;
                         }
                     }
                 }
@@ -601,9 +618,9 @@ namespace ZQcom.ViewModels
             finally
             {
                 // 最终更新UI上的处理结果（如果有剩余未处理的数据）
-                if (batch.Count > 0)
+                if (convertedBatch.Count > 0)
                 {
-                    AppendBatchToConvertedBuffer(batch);
+                    AppendBatchToConvertedBuffer(convertedBatch);
                 }
             }
         }
@@ -653,11 +670,14 @@ namespace ZQcom.ViewModels
         }
 
         // 截取数据
-        private void AppendBatchToExtractedBuffer(string data)
+        private void AppendBatchToExtractedBuffer(List<string> batch)
         {
             lock (_extractedDataBuffer)
             {
-                _extractedDataBuffer.AppendLine(data);
+                foreach (var item in batch)
+                {
+                    _extractedDataBuffer.AppendLine(item);
+                }
             }
         }
         private void AppendBatchToConvertedBuffer(List<string> batch)
@@ -828,7 +848,7 @@ namespace ZQcom.ViewModels
                     // 截取数据,并发送
                     processedData = hexDataWithoutSpaces.Substring(startIndex, length);
                 }
-                AppendBatchToExtractedBuffer(processedData);
+                //AppendBatchToExtractedBuffer(processedData);
 
 
 
