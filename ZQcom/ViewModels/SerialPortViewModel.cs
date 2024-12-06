@@ -135,7 +135,7 @@ namespace ZQcom.ViewModels
             _serialPortService.Start(_serialPort, OnDataReceivedHighFrequency);
 
             _highFrequencyReceivingCancellationTokenSource = new CancellationTokenSource();
-            _highFrequencyReceivingTask = ReadTaskHighFrequency(_highFrequencyReceivingCancellationTokenSource.Token);
+            _highFrequencyReceivingTask = Task.Run(() => ReadTaskHighFrequency(_highFrequencyReceivingCancellationTokenSource.Token));
         }
 
         public void StopHighFrequencyReceiving()
@@ -367,14 +367,14 @@ namespace ZQcom.ViewModels
             Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
             _dataAvailableSignal.Release(); // 通知读取任务开始处理数据
         }
-        public async Task ReadTaskHighFrequency(CancellationToken cancellationToken)
+        public void ReadTaskHighFrequency(CancellationToken cancellationToken)
         {
             const int BatchSize = 1024; // 批量读取大小
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 使用异步等待来避免阻塞
-                await _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
+                 _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
                 try
                 {
                     while (_serialPort?.BytesToRead > 0)
@@ -389,11 +389,11 @@ namespace ZQcom.ViewModels
 
                             // 实时更新UI
                             string data = _serialPort.Encoding.GetString(buffer, 0, bytesRead);
-                            await LogMessageHighFrequencyAsync(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                            LogMessageHighFrequency(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                         }
 
                         // 防止CPU占用过高，使用异步延迟
-                        await Task.Delay(10, cancellationToken);
+                        Task.Delay(10, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -409,7 +409,7 @@ namespace ZQcom.ViewModels
             }
         }
 
-        private async Task LogMessageHighFrequencyAsync(string inputData, string timestamp)
+        private void LogMessageHighFrequency(string inputData, string timestamp)
         {
             var sb = new StringBuilder();
             var value = inputData.Replace("\0", "\\0");
@@ -419,7 +419,7 @@ namespace ZQcom.ViewModels
             sb.Append(logEntry);
 
             // 异步更新UI
-            await Application.Current.Dispatcher.InvokeAsync((Action)(() =>
+            Application.Current.Dispatcher.InvokeAsync((Action)(() =>
             {
                 this.LogText?.AppendText(sb.ToString());
             }));
@@ -501,7 +501,7 @@ namespace ZQcom.ViewModels
             var convertedBatch = new List<string>(batchSize);
             var extractedBatch = new List<string>(batchSize);
             DateTime lastBatchProcessedTime = DateTime.UtcNow;
-            TimeSpan maxBatchProcessingInterval = TimeSpan.FromMilliseconds(500); // 最大批次处理间隔
+            TimeSpan maxBatchProcessingInterval = TimeSpan.FromMilliseconds(300); // 最大批次处理间隔
             var cleanedData = new StringBuilder();
             try
             {
@@ -573,10 +573,6 @@ namespace ZQcom.ViewModels
                             // 转换为浮点数
                             if (float.TryParse(extractedData, out float result))
                             {
-                                //lock (_convertedDataBuffer)
-                                //{
-                                //    _convertedDataBuffer.AppendLine(result.ToString());
-                                //}
                                 convertedBatch.Add(result.ToString()); // 添加到批次列表
 
                                 /// ----发布事件----
