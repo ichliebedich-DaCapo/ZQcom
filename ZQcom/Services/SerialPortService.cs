@@ -9,9 +9,9 @@ namespace ZQcom.Services
     {
         SerialDataReceivedEventHandler? _handler;
 
-        public List<string> GetAvailablePorts()
+        public static List<string> GetAvailablePorts()
         {
-            return SerialPort.GetPortNames().ToList();
+            return [.. SerialPort.GetPortNames()];
         }
 
         public SerialPort OpenPort(string portName, int baudRate, Parity parity, StopBits stopBits, int dataBits)

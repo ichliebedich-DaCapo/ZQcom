@@ -31,14 +31,11 @@ namespace ZQcom.ViewModels
         // 内部普通变量
         private readonly SerialPortService _serialPortService;      // 串口服务对象
         private SerialPort? _serialPort;                            // 当前打开的串口实例
+        private readonly StringBuilder _signBuffer=new();           // 存储标记数据
 
         // 数据绑定属性
         private string _openCloseButtonText = "打开串口";           // 打开/关闭串口按钮的文本
         private string _sendDataText = "01040000000271CB";          // 发送的数据
-        private string _logText = "";                               // 日志文本
-        private string _receiveText = "";                           // 接收到的数据文本
-        private string _extractedText = "";                         // 提取的数据文本
-        private string _convertedText = "";                         // 转换后的数据文本
         private bool _isHexSend;                                    // 是否以十六进制格式发送数据
         private bool _isHexDisplay;                                 // 是否以十六进制格式显示数据
         private bool _addNewline;                                   // 是否在每行数据末尾添加换行符
@@ -64,7 +61,7 @@ namespace ZQcom.ViewModels
         private bool _isEnableChart = false;                        // 启用图表,默认不可视
 
         // 定时器相关
-        private readonly DispatcherTimer _uiUpdateTimer; // 
+        private readonly DispatcherTimer _uiUpdateTimer;            // UI更新定时器
 
         // 线程相关
         private CancellationTokenSource? _cancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
@@ -73,7 +70,7 @@ namespace ZQcom.ViewModels
         private readonly ConcurrentQueue<string> _logQueue = new();
 
 
-        // 新
+        // 线程相关
         private CancellationTokenSource? _highFrequencyReceivingCancellationTokenSource;
         private Task? _highFrequencyReceivingTask;
 
@@ -86,7 +83,6 @@ namespace ZQcom.ViewModels
         private Task? _dataProcessingTask; // 数据处理任务
 
         // 事件
-        public event EventHandler<string>? DataReceived;            // 数据接收事件
         private readonly IEventAggregator _eventAggregator;         // 事件发布者
 
 
@@ -222,13 +218,13 @@ namespace ZQcom.ViewModels
 
         public ICommand OpenLogDirectoryCommand => new RelayCommand(OpenLogDirectory);
         public ICommand ClearTextCommand => new RelayCommand(ClearText);
-
+        public ICommand SignCommand => new RelayCommand(SignIndex);
 
         // 刷新串口列表
         private void PopulateSerialPortNames()
         {
             SerialPortNames.Clear();
-            foreach (var port in _serialPortService.GetAvailablePorts())
+            foreach (var port in SerialPortService.GetAvailablePorts())
             {
                 SerialPortNames.Add(port);
             }
@@ -497,7 +493,7 @@ namespace ZQcom.ViewModels
         private readonly StringBuilder _convertedDataBuffer = new(); // 用于累积转换后的数据
         private void ProcessData(CancellationToken cancellationToken)
         {
-            const int batchSize = 10; // 每批处理的数据数量
+            const int batchSize = 50; // 每批处理的数据数量
             var convertedBatch = new List<string>(batchSize);
             var extractedBatch = new List<string>(batchSize);
             DateTime lastBatchProcessedTime = DateTime.UtcNow;
@@ -906,6 +902,13 @@ namespace ZQcom.ViewModels
             }
         }
 
+        private void SignIndex()
+        {
+            _signBuffer.Append(ReceiveNum);
+            _signBuffer.AppendLine();
+        }
+
+
 
 
         // 生成日志文件名
@@ -932,8 +935,8 @@ namespace ZQcom.ViewModels
             {
                 string logFilePath = GenerateLogFileName();
                 EnsureDirectoryExists(Path.GetDirectoryName(logFilePath));
-                // 保存日志框
 
+                // 保存日志框
                 if (LogText?.Text != "")
                 {
                     File.WriteAllText(logFilePath, LogText?.Text);
@@ -948,6 +951,11 @@ namespace ZQcom.ViewModels
                         File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText?.Text);
                 }
 
+                // 保存标记框
+                if(_signBuffer.Length != 0)
+                {
+                    File.WriteAllText(logFilePath.Replace(".txt", "_sign.txt"), _signBuffer.ToString());
+                }
             }
             catch (Exception ex)
             {
@@ -984,6 +992,9 @@ namespace ZQcom.ViewModels
 
                 // 清除日志框
                 LogText?.Clear();
+
+                // 清除标记框
+                _signBuffer.Clear();
 
                 // 清除接收发送数据统计
                 ReceiveBytes = 0;
@@ -1089,23 +1100,7 @@ namespace ZQcom.ViewModels
             }
         }
 
-       
-
-
-
-        // 接收数据框
-        public string ReceiveText
-        {
-            get => _receiveText;
-            set
-            {
-                _receiveText = value;
-                RaisePropertyChanged(nameof(ReceiveText));
-            }
-        }
-
-
-
+     
 
         // 十六进制
         public bool IsHexSend

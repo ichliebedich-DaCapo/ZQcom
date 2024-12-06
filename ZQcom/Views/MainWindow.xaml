@@ -115,12 +115,10 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="10,0,0,0" Grid.Column="0" />
+                    <TextBlock Text="ZQcom" VerticalAlignment="Center" Margin="10,0,20,0" Grid.Column="0" />
                     <StackPanel Orientation="Horizontal" Grid.Column="1">
-                        <Button Style="{StaticResource RoundedButtonStyle}" Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,0,0" Width="40" />
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="保存日志" Command="{Binding SerialPortViewModel.SaveLogCommand}" Margin="10,0,0,0" />
                         <Button Style="{StaticResource RoundedButtonStyle}" Content="打开日志目录" Command="{Binding SerialPortViewModel.OpenLogDirectoryCommand}" Margin="10,0,0,0" />
-
                     </StackPanel>
 
                     <!--暂时先用按钮凑合凑合-->
@@ -160,7 +158,7 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <CheckBox Content="高频接收模式"  IsChecked="{Binding SerialPortViewModel.IsHighFrequencyReceiving}"  Margin="10,0,10,0" Height="14" />
                             <CheckBox Content="禁用时间戳"  IsChecked="{Binding SerialPortViewModel.IsDisableTimestamp}"  Margin="10,0,10,0" Height="14" />
-                            <Button Content="标记"  Command="{Binding SerialPortViewModel.SignCommand}"  Margin="0,0,0,0" Width="60" />
+                            <Button Content="标记"  Command="{Binding SerialPortViewModel.SignCommand}"  Margin="0,0,0,0" Width="70" />
                         </StackPanel>
                     </Grid>
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
@@ -225,7 +223,8 @@
 
                             <!-- 右边部分 -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <CheckBox Content="转换数据" IsChecked="{Binding SerialPortViewModel.IsConvertedData}" Margin="0,0,10,0" Height="14" />
+                                <Button Content="清屏" Command="{Binding SerialPortViewModel.ClearTextCommand}" Margin="10,0,125,0" Width="60" />
+                                <CheckBox Content="转换数据" IsChecked="{Binding SerialPortViewModel.IsConvertedData}" Margin="10,0,10,0" Height="14" />
                             </StackPanel>
                         </Grid>
                         
