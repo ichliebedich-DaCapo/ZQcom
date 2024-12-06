@@ -55,21 +55,15 @@ namespace ZQcom.Services
             }
         }
 
-
-        public void SendData(SerialPort port, string data)
+        // 要的就是速度
+        public void SendData(SerialPort? port, string data)
         {
-            if (port != null && port.IsOpen)
-            {
                 port.WriteLine(data);
-            }
         }
 
-        public void SendData(SerialPort port, byte[] data)
+        public void SendData(SerialPort? port, byte[] data)
         {
-            if (port != null && port.IsOpen)
-            {
                 port.Write(data, 0, data.Length);
-            }
         }
     }
 }

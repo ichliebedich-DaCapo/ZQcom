@@ -64,7 +64,7 @@ namespace ZQcom.ViewModels
         private readonly DispatcherTimer _uiUpdateTimer;            // UI更新定时器
 
         // 线程相关
-        private CancellationTokenSource? _cancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
+        private CancellationTokenSource? _timedSendCancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
 
         private readonly ConcurrentQueue<string> _receiveQueue = new();// 【生产者-消费者模式】
         private readonly ConcurrentQueue<string> _logQueue = new();
@@ -294,69 +294,117 @@ namespace ZQcom.ViewModels
                 return;
             }
 
+            // 发送框中的数据
+            SendDataBase(SendDataText);
+        }
+
+        private void SendDataBase(string data)
+        {
             // 获取要发送的数据,确保不改变原数据
-            var data = SendDataText;
-            if (!string.IsNullOrEmpty(data))
+            if (IsHexSend)
             {
-                if (IsHexSend)
+                // 检验是否为十六进制字符串
+                if (IsHexString(data))
                 {
-                    // 检验是否为十六进制字符串
-                    if (IsHexString(data))
-                    {
-                        // 发送转为16进制字节数组的数据
-                        byte[] hexData = Convert.FromHexString(data);
-                        _serialPortService.SendData(_serialPort, hexData);
+                    // 发送转为16进制字节数组的数据
+                    byte[] hexData = Convert.FromHexString(data);
+                    _serialPortService.SendData(_serialPort, hexData);
 
-                        // 【UI更新】进行字节统计
-                        Application.Current.Dispatcher.InvokeAsync(() =>
-                        {
-                            SendBytes += hexData.Length;
-                        });
+                    // 【UI更新】进行字节统计
+                    Interlocked.Add(ref _backgroundReceiveBytes, hexData.Length);
 
-                    }
-                    else
-                    {
-                        MessageBox.Show("请不要输入非法字符！");
-                        return;
-                    }
-                    // 格式化数据，确保以16进制发送时不会出错
-                    data = FormatHexString(data);
                 }
                 else
                 {
-                    // 16进制的换行我还没做，原因很简单，我暂时没有遇到发送16进制还需要加上换行的需求
-                    data = data + (AddNewline ? "\r\n" : "");
-                    _serialPortService.SendData(_serialPort, data);
+                    MessageBox.Show("请不要输入非法字符！");
 
-                    // 【UI更新】进行字节统计
-                    // 将字符串转换为字节数据（假设使用ASCII编码，后续可能会添加多种编码方式）
-                    byte[] buffer = System.Text.Encoding.ASCII.GetBytes(data);
-                    //byte[] buffer = System.Text.Encoding.UTF8.GetBytes(data);
-                    Application.Current.Dispatcher.InvokeAsync(() =>
+                    // 停止定时发送
+                    if (IsTimedSendEnabled)
                     {
-                        SendBytes += buffer.Length;
-                    });
-
-
+                        _timedSendCancellationTokenSource?.Cancel();
+                        IsTimedSendEnabled = false;
+                    }
+                    return;
                 }
 
-                // 【UI更新】进行数量统计
-                Application.Current.Dispatcher.InvokeAsync(() =>
+                // 格式化数据，用于显示
+                data = FormatHexString(data);
+            }
+            else
+            {
+                // 16进制的换行我还没做，因为暂时没有遇到发送16进制还需要加上换行的需求
+                data = data + (AddNewline ? "\r\n" : "");
+                _serialPortService.SendData(_serialPort, data);
+
+                // 【UI更新】进行字节统计
+                // 将字符串转换为字节数据（假设使用ASCII编码，后续可能会添加多种编码方式）
+                byte[] buffer = System.Text.Encoding.ASCII.GetBytes(data);
+                // byte[] buffer = System.Text.Encoding.UTF8.GetBytes(data);
+                Interlocked.Add(ref _backgroundSendBytes, buffer.Length);
+            }
+
+            // 【UI更新】进行数量统计
+            Interlocked.Increment(ref _backgroundSendCount);
+
+
+
+            // 发送到日志框内
+            // 不能加入到UI异步更新线程，否则容易卡死
+            SendLogMessage(data);
+        }
+
+        /// <summary>
+        /// 启用/禁用定时发送
+        /// </summary>
+        private async void ToggleTimedSend()
+        {
+            IsTimedSendEnabled = !IsTimedSendEnabled;
+            if (_isTimedSendEnabled)
+            {
+                _timedSendCancellationTokenSource = new CancellationTokenSource();
+                try
                 {
-                    ++SendNum;
-                });
+                    while (true)
+                    {
+                        if (_timedSendCancellationTokenSource.Token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+                        await Task.Delay(TimedSendInterval, _timedSendCancellationTokenSource.Token);
+                        // 发送数据
+                        SendDataBase(SendDataText);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // 当任务被取消时抛出的异常
+                }
+                catch (Exception ex)
+                {
+                    // 其他异常
+                        MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                finally
+                {
+                    IsTimedSendEnabled = false;
+                }
 
-
-                // 发送到日志框内
-                // 不能加入到UI异步更新线程，否则容易卡死
-                LogMessage($"<< {data}");
+            }
+            else
+            {
+                // 停止定时发送
+                _timedSendCancellationTokenSource?.Cancel();
+                _timedSendCancellationTokenSource?.Dispose();
+                _timedSendCancellationTokenSource= null;
+                IsTimedSendEnabled = false;
             }
         }
 
 
-
         // ---------接收打印数据--------
         /// -------------高频接收模式--------------
+        /// 高频接收模式下不提供处理数据、发送数据等操作
+        /// 
         private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
         {
@@ -385,7 +433,7 @@ namespace ZQcom.ViewModels
 
                             // 实时更新UI
                             string data = _serialPort.Encoding.GetString(buffer, 0, bytesRead);
-                            LogMessageHighFrequency(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                            ReceiveLogMessageHighFrequency(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                         }
 
                         // 防止CPU占用过高，使用异步延迟
@@ -405,7 +453,7 @@ namespace ZQcom.ViewModels
             }
         }
 
-        private void LogMessageHighFrequency(string inputData, string timestamp)
+        private void ReceiveLogMessageHighFrequency(string inputData, string timestamp)
         {
             var sb = new StringBuilder();
             var value = inputData.Replace("\0", "\\0");
@@ -434,7 +482,7 @@ namespace ZQcom.ViewModels
 
         // 用于累积日志数据
         private readonly StringBuilder _logBuffer = new();
-        private void LogMessageSmallBatch(ref string inputData)
+        private void ReceiveLogMessageSmallBatch(ref string inputData)
         {
             // 缓存当前时间的格式化字符串
             var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
@@ -454,9 +502,11 @@ namespace ZQcom.ViewModels
                 {
                     // Take 将阻塞当前线程，直到队列中有数据可用或取消标记被触发
                     string data = _smallBatchDataQueue.Take(cancellationToken);
+                    // 格式化数据，用于16进制显示
+                    data= FormatData(data);
 
-                    // 打印数据
-                    LogMessageSmallBatch(ref data);
+                    // 打印日志数据
+                    ReceiveLogMessageSmallBatch(ref data);
 
                     // 将数据添加到处理队列中
                     if (IsExtractedData || IsConvertedData)
@@ -496,8 +546,9 @@ namespace ZQcom.ViewModels
             const int batchSize = 50; // 每批处理的数据数量
             var convertedBatch = new List<string>(batchSize);
             var extractedBatch = new List<string>(batchSize);
-            DateTime lastBatchProcessedTime = DateTime.UtcNow;
-            TimeSpan maxBatchProcessingInterval = TimeSpan.FromMilliseconds(300); // 最大批次处理间隔
+            int lastExtractedTickCount= Environment.TickCount;
+            int lastConvertedTickCount= Environment.TickCount;
+            int maxProcessingInterval=300;
             var cleanedData = new StringBuilder();
             try
             {
@@ -553,56 +604,82 @@ namespace ZQcom.ViewModels
                         extractedBatch.Add(extractedData);
 
                         // 动态批次处理逻辑
-                        if (extractedBatch.Count >= batchSize || DateTime.UtcNow - lastBatchProcessedTime >= maxBatchProcessingInterval)
+                        if (extractedBatch.Count >= batchSize || Environment.TickCount - lastExtractedTickCount >= maxProcessingInterval)
                         {
                             AppendBatchToExtractedBuffer(extractedBatch);
                             extractedBatch.Clear();
-                            lastBatchProcessedTime = DateTime.UtcNow;
+                            lastExtractedTickCount = Environment.TickCount;
                         }
                     }
 
                     // -----转换数据-----
                     if (IsConvertedData)
                     {
-                        try
+                        if (IsHexDisplay)
                         {
-                            // 转换为浮点数
-                            if (float.TryParse(extractedData, out float result))
-                            {
-                                convertedBatch.Add(result.ToString()); // 添加到批次列表
+                            // 将16进制字符串转换为字节数组
+                            byte[] bytes = Convert.FromHexString(extractedData);
 
-                                /// ----发布事件----
-                                if (IsEnableChart)
-                                    _eventAggregator.GetEvent<DataReceivedEvent>().Publish(result);
+                            // 检查字节数组长度是否为4
+                            if (bytes.Length != 4)
+                            {
+                                // 错误情况下的处理
+                                convertedBatch.Add("长度不足");
                             }
                             else
                             {
-                                lock (_convertedDataBuffer) // 错误信息也累积到 _convertedDataBuffer
+                                // 非常重要，因为小端模式下，数组中的数据需要反转才能正确转换
+                                if (BitConverter.IsLittleEndian)
                                 {
-                                    _convertedDataBuffer.AppendLine("数据转换失败: 无法解析为浮点数");
+                                    Array.Reverse(bytes);
                                 }
+
+                                // 将字节数组转换为32位浮点数
+                                convertedBatch.Add(BitConverter.ToSingle(bytes, 0).ToString());
+                            }
+
+                        }
+                        else
+                        {
+                            // 不开启十六进制转换
+                            try
+                            {
+                                // 转换为浮点数
+                                if (float.TryParse(extractedData, out float result))
+                                {
+                                    convertedBatch.Add(result.ToString()); // 添加到批次列表
+
+                                    /// ----发布事件----
+                                    if (IsEnableChart)
+                                        _eventAggregator.GetEvent<DataReceivedEvent>().Publish(result);
+                                }
+                                else
+                                {
+
+                                    convertedBatch.Add("无法解析为浮点数");
+
+                                    /// ----发布事件----
+                                    if (IsEnableChart)
+                                        _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // 记录异常，不阻塞主线程
+                                Debug.WriteLine($"数据转换失败：{ex.Message}");
 
                                 /// ----发布事件----
                                 if (IsEnableChart)
                                     _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            // 记录异常，不阻塞主线程
-                            Debug.WriteLine($"数据转换失败：{ex.Message}");
-
-                            /// ----发布事件----
-                            if (IsEnableChart)
-                                _eventAggregator.GetEvent<DataReceivedEvent>().Publish(0);
-                        }
 
                         // 动态批次处理逻辑
-                        if (convertedBatch.Count >= batchSize || DateTime.UtcNow - lastBatchProcessedTime >= maxBatchProcessingInterval)
+                        if (convertedBatch.Count >= batchSize || Environment.TickCount - lastConvertedTickCount >= maxProcessingInterval)
                         {
                             AppendBatchToConvertedBuffer(convertedBatch);
                             convertedBatch.Clear();
-                            lastBatchProcessedTime = DateTime.UtcNow;
+                            lastConvertedTickCount = Environment.TickCount;
                         }
                     }
                 }
@@ -619,15 +696,21 @@ namespace ZQcom.ViewModels
 
 
         // -------刷新UI-------
-        private int _backgroundReceiveCount; // 后台计数器
-        private int _backgroundReceiveBytes; // 后台计数器
-        private int _backgroundPendingNum=0; // 后台计数器
+        // 后台计数器
+        private int _backgroundReceiveCount=0;  // 接收数量
+        private int _backgroundReceiveBytes=0;  // 接收字节数
+        private int _backgroundPendingNum=0;    // 待处理数量
+        private int _backgroundSendCount=0;     // 发送数量
+        private int _backgroundSendBytes=0;     // 发送字节数
+
         private void UpdateUI()
         {
             // 更新UI上的ReceiveNum
             ReceiveNum += Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 假设ReceiveNum是您的数据绑定属性
             ReceiveBytes += Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
-            PendingNum = Interlocked.Exchange(ref _backgroundPendingNum, 0);
+            PendingNum = Interlocked.Exchange(ref _backgroundPendingNum, 0);// 想要使用 read方法，但得是 long类型
+            SendNum += Interlocked.Exchange(ref _backgroundSendCount, 0);
+            SendBytes += Interlocked.Exchange(ref _backgroundSendBytes, 0);
 
             // 更新日志
             if (_logBuffer.Length > 0)
@@ -695,60 +778,7 @@ namespace ZQcom.ViewModels
 
 
 
-        /// <summary>
-        /// 启用/禁用定时发送
-        /// </summary>
-        private async void ToggleTimedSend()
-        {
-            if (_isTimedSendEnabled)
-            {
-                _cancellationTokenSource?.Cancel();
-                _isTimedSendEnabled = false;
-                RaisePropertyChanged(nameof(IsTimedSendEnabled));
-            }
-            else
-            {
-                _cancellationTokenSource = new CancellationTokenSource();
-                _isTimedSendEnabled = true;
-                RaisePropertyChanged(nameof(IsTimedSendEnabled));
 
-                try
-                {
-                    while (true)
-                    {
-                        if (_cancellationTokenSource.Token.IsCancellationRequested)
-                        {
-                            break;
-                        }
-
-                        await Task.Delay(TimedSendInterval, _cancellationTokenSource.Token);
-                        SendData();
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // 当任务被取消时抛出的异常
-                    // 注释掉，防止频繁弹出消息框
-                    //Application.Current.Dispatcher.Invoke(() =>
-                    //{
-                    //    MessageBox.Show("定时发送已取消", "信息", MessageBoxButton.OK, MessageBoxImage.Information);
-                    //});
-                }
-                catch (Exception ex)
-                {
-                    // 其他异常
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    });
-                }
-                finally
-                {
-                    _isTimedSendEnabled = false;
-                    RaisePropertyChanged(nameof(IsTimedSendEnabled));
-                }
-            }
-        }
 
 
 
@@ -783,17 +813,29 @@ namespace ZQcom.ViewModels
 
 
         // 发送日志消息
-        private void LogMessage(string message)
+        private void SendLogMessage(string inputData)
         {
             // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
             if (IsDisableTimestamp)
             {
                 //LogText += $" {message}{Environment.NewLine}";
+                lock (_logBuffer)
+                {
+                    _logBuffer.AppendFormat("<< {0}{1}", inputData, Environment.NewLine);
+                }
             }
             else
             {
-                //LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+                // 缓存当前时间的格式化字符串
+                var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+
+                // 使用 AppendFormat 减少方法调用次数
+                lock (_logBuffer)
+                {
+                    _logBuffer.AppendFormat("[{0}]<< {1}{2}", now, inputData, Environment.NewLine);
+                }
             }
+
         }
 
 
@@ -990,8 +1032,10 @@ namespace ZQcom.ViewModels
                 _receiveQueue.Clear();//清空接收队列
                 _logQueue.Clear();
 
-                // 清除日志框
+                // 清除日志框、处理数据框
                 LogText?.Clear();
+                ExtractedText?.Clear();
+                ConvertedText?.Clear();
 
                 // 清除标记框
                 _signBuffer.Clear();
@@ -1319,6 +1363,10 @@ namespace ZQcom.ViewModels
             set
             {
                 _isHighFrequencyReceiving = value;
+                if(value)
+                {
+                    MessageBox.Show("注意！高频接收模式下适合接收2KHz以上发送速率的数据，且不提供发送数据、处理数据等操作。如果此时串口为打开状态，那么需要关闭后再重新打开才能使用");
+                }
                 RaisePropertyChanged(nameof(IsHighFrequencyReceiving));
             }
         }
