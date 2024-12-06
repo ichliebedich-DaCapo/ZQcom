@@ -1,15 +1,30 @@
-﻿using System.Windows;
+﻿using ICSharpCode.AvalonEdit;
+using System.Windows;
 using System.Windows.Input;
+using ZQcom.ViewModels;
 
 namespace ZQcom.Views
 {
     public partial class MainWindow : Window
     {
+        private MainViewModel _mainViewModel;
         public MainWindow()
         {
             InitializeComponent();
             // 由于已经在App.xaml.cs中设置了DataContext，所以这里要注释掉
             //DataContext = new ViewModels.MainViewModel();
+
+            // 初始化主视图模型
+            _mainViewModel = new MainViewModel();
+
+            // ----------传入组件----------
+            _mainViewModel.SerialPortViewModel.LogText = textLogEditor;
+            _mainViewModel.SerialPortViewModel.ExtractedText = textExtractedEditor;
+            _mainViewModel.SerialPortViewModel.ConvertedText = textConvertedEditor;
+
+            // 设置数据上下文
+            DataContext = _mainViewModel;
+  
         }
 
         // 最小化窗口
@@ -35,6 +50,7 @@ namespace ZQcom.Views
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        
         }
 
         // 窗口标题栏拖动
@@ -44,6 +60,23 @@ namespace ZQcom.Views
             {
                 this.DragMove();
             }
+        }
+
+
+        // 接收数据框更新
+        private void TextLogEditor_TextChanged(object sender, EventArgs e)
+        {
+            textLogEditor.ScrollToEnd();
+        }
+
+        private void TextExtractedEditor_TextChanged(object sender, EventArgs e)
+        {
+            textExtractedEditor.ScrollToEnd();
+        }
+
+        private void TextConvertedEditor_TextChanged(object sender, EventArgs e)
+        {
+            textConvertedEditor.ScrollToEnd();
         }
     }
 }

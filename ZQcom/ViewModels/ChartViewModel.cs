@@ -19,11 +19,10 @@ namespace ZQcom.ViewModels
     public class ChartViewModel : ViewModelBase
     {
         private ChartModel _chartModel;                                     // 图表数据
-        private bool _isEnableChart = false;                                // 启用图表,默认不可视
         private int _maxChartPoints = 100;                                  // 图表最大数据点数
         private bool _isDisableAnimation = false;                           // 禁用动画
-        private List<double> _dataDisplayChartValues = new List<double>();  // 数据显示图表数据
-
+        private List<double> _dataDisplayChartValues = [];                  // 数据显示图表数据
+        private List<double> _signIndexValues = [];                         // 标记索引
 
         // 用于订阅事件
         private readonly IEventAggregator _eventAggregator;
@@ -34,124 +33,29 @@ namespace ZQcom.ViewModels
             _chartModel = new ChartModel();
             // 订阅事件
             _eventAggregator = eventAggregator;
-            _eventAggregator.GetEvent<DataReceivedEvent>().Subscribe(AddDataPoint);
-        }
-
-        // ------------------------数据绑定------------------------------
-        // 图表数据
-        public ChartModel ChartModel
-        {
-            get => _chartModel;
-            set
-            {
-                _chartModel = value;
-            }
-        }
-
-        // 图表可视属性
-        public System.Windows.Visibility ChartVisibility
-        {
-            get
-            {
-                if (IsEnableChart)
-                {
-                    return System.Windows.Visibility.Visible;
-                }
-                else
-                {
-                    return System.Windows.Visibility.Hidden;
-                }
-            }
-        }
-        // 启用图表
-        public bool IsEnableChart
-        {
-            get => _isEnableChart;
-            set
-            {
-                _isEnableChart = value;
-                RaisePropertyChanged(nameof(IsEnableChart));
-                RaisePropertyChanged(nameof(ChartVisibility));
-            }
-        }
-
-        // 图表最大数据点数属性
-        public int AxisXMaxValue
-        {
-            get => _maxChartPoints-1;
-        }
-        // 图表最大数据点数
-        public int MaxDisplayPoints
-        {
-            get => _maxChartPoints;
-            set
-            {
-                _maxChartPoints = value;
-                RaisePropertyChanged(nameof(MaxDisplayPoints));
-                RaisePropertyChanged(nameof(AxisXMaxValue));
-            }
+            // 加上ThreadOption.BackgroundThread，防止阻塞主线程，导致死锁
+            _eventAggregator.GetEvent<DataReceivedEvent>().Subscribe(AddDataPoint, ThreadOption.BackgroundThread);
         }
 
 
-        // 禁用动画属性
-        public bool DisableAnimation
-        {
-            get => _isDisableAnimation;
-        }
-        // 是否禁用动画
-        public bool IsDisableAnimation
-        {
-            get => _isDisableAnimation;
-            set
-            {
-                _isDisableAnimation = value;
-                RaisePropertyChanged(nameof(IsDisableAnimation));
-                RaisePropertyChanged(nameof(DisableAnimation));
-            }
-        }
-
-
-        // 显示在图表中的数据
-        public List<double> DataDisplayChartValues
-        {
-            get => _dataDisplayChartValues;
-            set
-            {
-                _dataDisplayChartValues = value;
-                RaisePropertyChanged(nameof(DataDisplayChartValues));
-            }
-        }
 
 
         // ------------------------私有方法------------------------------
-        // 异步添加数据点,先放着
-        //private async Task AddDataPointsAsync(double value)
-        //{
-        //    // 异步处理事件
-        //    await Task.Run(() =>
-        //    {
-        //        AddDataPoint(value);
-        //    });
-        //}
 
         // 添加数据点
         public void AddDataPoint(double value)
         {
-            if (IsEnableChart)
-            {
-                // 由于起始索引为0，索引没有用">="
-                if (ChartModel.GetDataPointCount() > AxisXMaxValue)
-                    RemoveLastDataPoint();// 删除最后一条数据
-                ChartModel.AddDataPoint(value);
-            }
+
+            // 由于起始索引为0，索引没有用">="
+            if (ChartModel.GetDataPointCount() > AxisXMaxValue)
+                RemoveLastDataPoint();// 删除最后一条数据
+            ChartModel.AddDataPoint(value);
+
         }
         // 删除最后一条数据
         public void RemoveLastDataPoint()
         {
-            if(IsEnableChart)
-            {
-                ChartModel.RemoveDataPoint(0);
-            }
+            ChartModel.RemoveDataPoint(0);
         }
 
 
@@ -173,7 +77,9 @@ namespace ZQcom.ViewModels
             ChartModel.FFT();
         }
 
-        // 进行数据显示
+        /// <summary>
+        /// 进行数据显示
+        /// </summary>
         private void ExecuteDataDisplayCommand()
         {
             // 获取当前目录
@@ -197,16 +103,26 @@ namespace ZQcom.ViewModels
             if (openFileDialog.ShowDialog() == true)
             {
                 string filePath = openFileDialog.FileName;
+                // 加载并预处理数据
                 LoadAndProcessData(filePath);
 
-                // 数据处理完成后打开图表窗口
-                var chartWindow = new DataDisplayChartWindow();
-                chartWindow.DataContext = this; // 将当前视图模型设置为数据上下文
+                string signFilePath = Path.Combine(Path.GetDirectoryName(filePath), $"{string.Join("_", Path.GetFileNameWithoutExtension(filePath).Split('_').Take(3))}_sign.txt");
+
+                // 加载标记数据
+                if (File.Exists(signFilePath))
+                    LoadSignIndexData(signFilePath);
+
+                // ----数据处理完成后打开图表窗口----
+                var chartWindow = new DataDisplayChartWindow(_dataDisplayChartValues, _signIndexValues);
+
+
+                //chartWindow.DataContext = this; // 将当前视图模型设置为数据上下文
                 chartWindow.Show();
             }
         }
 
 
+        // 从文件中加载数据并预处理
         private void LoadAndProcessData(string filePath)
         {
             _dataDisplayChartValues = File.ReadAllLines(filePath)
@@ -253,12 +169,65 @@ namespace ZQcom.ViewModels
                 }
             }
         }
-        // // 用于调试
-        //public ICommand DebugCommand => new RelayCommand(DebugAddPoints);
 
-        //public void DebugAddPoints()
-        //{
-        //    AddDataPoint(DateTime.Now.Millisecond % 100);
-        //}
+        // 从文件中加载标记数据
+        private void LoadSignIndexData(string filePath)
+        {
+            _signIndexValues = File.ReadAllLines(filePath)
+                                      .SelectMany(ExtractNumbersFromLine)
+                                      .Where(number => !double.IsNaN(number))
+                                      .ToList();
+        }
+
+
+        // ------------------------数据绑定------------------------------
+        // 图表数据
+        public ChartModel ChartModel
+        {
+            get => _chartModel;
+            set
+            {
+                _chartModel = value;
+            }
+        }
+
+
+
+
+        // 图表最大数据点数属性
+        public int AxisXMaxValue
+        {
+            get => _maxChartPoints - 1;
+        }
+        // 图表最大数据点数
+        public int MaxDisplayPoints
+        {
+            get => _maxChartPoints;
+            set
+            {
+                _maxChartPoints = value;
+                RaisePropertyChanged(nameof(MaxDisplayPoints));
+                RaisePropertyChanged(nameof(AxisXMaxValue));
+            }
+        }
+
+
+        // 禁用动画属性
+        public bool DisableAnimation
+        {
+            get => _isDisableAnimation;
+        }
+        // 是否禁用动画
+        public bool IsDisableAnimation
+        {
+            get => _isDisableAnimation;
+            set
+            {
+                _isDisableAnimation = value;
+                RaisePropertyChanged(nameof(IsDisableAnimation));
+                RaisePropertyChanged(nameof(DisableAnimation));
+            }
+        }
+
     }
 }

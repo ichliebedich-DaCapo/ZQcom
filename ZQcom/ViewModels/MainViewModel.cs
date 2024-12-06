@@ -23,6 +23,5 @@ namespace ZQcom.ViewModels
 
         public SerialPortViewModel SerialPortViewModel => _serialPortViewModel;
         public ChartViewModel ChartViewModel => _chartViewModel;
-
     }
 }
