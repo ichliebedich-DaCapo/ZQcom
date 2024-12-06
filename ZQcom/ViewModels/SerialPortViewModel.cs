@@ -131,14 +131,15 @@ namespace ZQcom.ViewModels
                 return; // 如果任务已经在运行，则不启动新的任务
             }
 
-            _serialPort.DataReceived += OnDataReceivedHighFrequency;
+            _serialPortService.Start(_serialPort, OnDataReceivedHighFrequency);
+
             _highFrequencyReceivingCancellationTokenSource = new CancellationTokenSource();
             _highFrequencyReceivingTask = ReadTaskHighFrequency(_highFrequencyReceivingCancellationTokenSource.Token);
         }
 
         public void StopHighFrequencyReceiving()
         {
-            _serialPort.DataReceived -= OnDataReceivedHighFrequency;
+            
             if (_highFrequencyReceivingCancellationTokenSource != null)
             {
                 _highFrequencyReceivingCancellationTokenSource.Cancel();
@@ -167,8 +168,8 @@ namespace ZQcom.ViewModels
                 return; // 如果任务已经在运行，则不启动新的任务
             }
 
-            // 绑定 DataReceived 事件处理程序
-            _serialPort.DataReceived += OnDataReceivedSmallBatch;
+            // 绑定 DataReceived 事件处理程序并启动
+            _serialPortService.Start(_serialPort, OnDataReceivedSmallBatch);
 
             // 启动小批量数据处理任务
             _smallBatchCancellationTokenSource = new CancellationTokenSource();
@@ -181,10 +182,7 @@ namespace ZQcom.ViewModels
 
         public void StopSmallBatchReceiving()
         {
-            // 解绑 DataReceived 事件处理程序
-            _serialPort.DataReceived -= OnDataReceivedSmallBatch;
-
-            // 取消并等待小批量数据处理任务完成
+            // 取消小批量数据处理任务
             if (_smallBatchCancellationTokenSource != null)
             {
                 _smallBatchCancellationTokenSource.Cancel();
@@ -257,6 +255,8 @@ namespace ZQcom.ViewModels
                     StartSmallBatchReceiving();
                     //StartHighFrequencyReceiving();
 
+
+
                 }
                 catch (Exception ex)
                 {
@@ -267,12 +267,15 @@ namespace ZQcom.ViewModels
             {
                 // -------------关闭串口逻辑-------------
                 _serialPortService.ClosePort(_serialPort);
-                _serialPort = null;
                 OpenCloseButtonText = "打开串口";
 
                 // 关闭接收
                 StopSmallBatchReceiving();
                 //StopHighFrequencyReceiving();
+
+                // ---执行清理工作---
+                _serialPort.Dispose();
+                _serialPort = null;
 
             }
         }
@@ -419,7 +422,7 @@ namespace ZQcom.ViewModels
 
 
         /// ---------------小批量数据接收-------------
-       
+
 
         private void OnDataReceivedSmallBatch(object? sender, SerialDataReceivedEventArgs e)
         {
@@ -428,12 +431,12 @@ namespace ZQcom.ViewModels
 
             // 直接读取所有可用数据并添加到队列中
 
-                _smallBatchDataQueue.Add(_serialPort.ReadExisting());
+            _smallBatchDataQueue.Add(_serialPort.ReadExisting());
 
         }
 
         // 用于累积日志数据
-        private readonly StringBuilder _logBuffer = new(); 
+        private readonly StringBuilder _logBuffer = new();
         private void LogMessageSmallBatch(ref string inputData)
         {
             // 缓存当前时间的格式化字符串
@@ -468,22 +471,17 @@ namespace ZQcom.ViewModels
             catch (OperationCanceledException)
             {
                 // 如果取消请求被触发，则退出循环
-                Console.WriteLine("处理小批量数据的任务已被取消。");
+                Debug.WriteLine("处理小批量数据的任务已被取消。");
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("collection was completed"))
             {
                 // 如果集合被标记为完成且队列为空，则正常退出
-                Console.WriteLine("处理小批量数据的任务已完成。");
+                Debug.WriteLine("处理小批量数据的任务已完成。");
             }
             catch (Exception ex)
             {
                 // 处理其他异常
-                Console.WriteLine($"处理小批量数据时发生错误: {ex.Message}");
-            }
-            finally
-            {
-                // 完成后确保清理资源
-                _smallBatchDataQueue.CompleteAdding();
+                Debug.WriteLine($"处理小批量数据时发生错误: {ex.Message}");
             }
         }
 
@@ -577,7 +575,7 @@ namespace ZQcom.ViewModels
                         catch (Exception ex)
                         {
                             // 记录异常，不阻塞主线程
-                            Console.WriteLine($"数据转换失败：{ex.Message}");
+                            Debug.WriteLine($"数据转换失败：{ex.Message}");
 
                             // 发布事件
                             if (IsEnableChart)
@@ -642,7 +640,7 @@ namespace ZQcom.ViewModels
             ReceiveBytes += bytes;
 
             // 更新日志
-            if(_logBuffer.Length>0)
+            if (_logBuffer.Length > 0)
             {
                 lock (_logBuffer)
                 {

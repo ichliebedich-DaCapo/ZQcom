@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Ports;
+using System.Windows;
 
 namespace ZQcom.Services
 {
     public class SerialPortService
     {
-        public event EventHandler<SerialDataReceivedEventArgs> DataReceived;
+        SerialDataReceivedEventHandler? _handler;
 
         public List<string> GetAvailablePorts()
         {
@@ -21,19 +22,39 @@ namespace ZQcom.Services
                 StopBits = stopBits,
                 DataBits = dataBits
             };
-            port.DataReceived += OnDataReceived;
-            port.Open();
             return port;
         }
+
+        /// <summary>
+        /// 用于绑定接收数据函数和启动串口
+        /// </summary>
+        /// <param name="port"></param>
+        /// <param name="handler"></param>
+        public void Start(SerialPort? port, SerialDataReceivedEventHandler handler)
+        {
+            if (port != null)
+            {
+                _handler = handler;
+                port.DataReceived += handler;
+                port.Open();
+            }
+            else
+            {
+                MessageBox.Show("串口丢失");
+            }
+        }
+
 
         public void ClosePort(SerialPort port)
         {
             if (port != null && port.IsOpen)
             {
-                port.DataReceived -= OnDataReceived;
+                port.DataReceived -= _handler;
+                _handler = null;
                 port.Close();
             }
         }
+
 
         public void SendData(SerialPort port, string data)
         {
@@ -50,12 +71,5 @@ namespace ZQcom.Services
                 port.Write(data, 0, data.Length);
             }
         }
-
-        protected virtual void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            DataReceived?.Invoke(sender, e);
-        }
-
-
     }
 }
