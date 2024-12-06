@@ -18,7 +18,9 @@ namespace ZQcom.Views
             _mainViewModel = new MainViewModel();
 
             // ----------传入组件----------
-            _mainViewModel.SerialPortViewModel.TextEditor = textEditor;
+            _mainViewModel.SerialPortViewModel.LogText = textLogEditor;
+            _mainViewModel.SerialPortViewModel.ExtractedText = textExtractedEditor;
+            _mainViewModel.SerialPortViewModel.ConvertedText = textConvertedEditor;
 
             // 设置数据上下文
             DataContext = _mainViewModel;
@@ -62,9 +64,19 @@ namespace ZQcom.Views
 
 
         // 接收数据框更新
-        private void TextBox_TextChanged(object sender, EventArgs e)
+        private void TextLogEditor_TextChanged(object sender, EventArgs e)
         {
-            textEditor.ScrollToEnd();
+            textLogEditor.ScrollToEnd();
+        }
+
+        private void TextExtractedEditor_TextChanged(object sender, EventArgs e)
+        {
+            textExtractedEditor.ScrollToEnd();
+        }
+
+        private void TextConvertedEditor_TextChanged(object sender, EventArgs e)
+        {
+            textConvertedEditor.ScrollToEnd();
         }
     }
 }

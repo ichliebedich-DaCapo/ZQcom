@@ -193,8 +193,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <avalonEdit:TextEditor  Name="textEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
-                                                TextChanged="TextBox_TextChanged"/>
+                        <avalonEdit:TextEditor  Name="textLogEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
+                                                TextChanged="TextLogEditor_TextChanged"/>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
                             <TextBlock Text="接收字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
                             <TextBlock Text="{Binding SerialPortViewModel.ReceiveBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
@@ -228,29 +228,18 @@
                                 <CheckBox Content="转换数据" IsChecked="{Binding SerialPortViewModel.IsConvertedData}" Margin="0,0,10,0" Height="14" />
                             </StackPanel>
                         </Grid>
+                        
                         <Grid Grid.Row="3" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="27*" />
-                                <ColumnDefinition Width="38*"/>
-                                <ColumnDefinition Width="65*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Name="TbxExtractedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
-                             Margin="0,0,10,0" Text="{Binding SerialPortViewModel.ExtractedText, Mode=OneWay}" 
-                             Grid.Column="0" ScrollViewer.VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2" >
-                                <i:Interaction.Behaviors>
-                                    <!--自动滚动到底部-->
-                                    <behaviors:ScrollToEndBehavior />
-                                </i:Interaction.Behaviors>
-                            </TextBox>
-                            <TextBox Name="TbxConvertedData" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
-                             Margin="0,0,10,0" Text="{Binding SerialPortViewModel.ConvertedText, Mode=OneWay}" Grid.Column="2"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto" >
-                                <i:Interaction.Behaviors>
-                                    <!--自动滚动到底部-->
-                                    <behaviors:ScrollToEndBehavior />
-                                </i:Interaction.Behaviors>
-                            </TextBox>
+                            <avalonEdit:TextEditor  Name="textExtractedEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
+                                       Grid.Column="0"          TextChanged="TextExtractedEditor_TextChanged"/>
+                            <avalonEdit:TextEditor  Name="textConvertedEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
+                                       Grid.Column="1"          TextChanged="TextConvertedEditor_TextChanged"/>
                         </Grid>
+                        
                     </Grid>
                 </DockPanel>
 

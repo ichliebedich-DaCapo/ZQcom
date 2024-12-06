@@ -421,10 +421,10 @@ namespace ZQcom.ViewModels
             sb.Append(logEntry);
 
             // 异步更新UI
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await Application.Current.Dispatcher.InvokeAsync((Action)(() =>
             {
-                TextEditor?.AppendText(sb.ToString());
-            });
+                this.LogText?.AppendText(sb.ToString());
+            }));
         }
 
 
@@ -521,7 +521,7 @@ namespace ZQcom.ViewModels
                     }
 
                     // 观测有多少数据
-                    Interlocked.Add(ref _backgroundPendingNum, _dataToProcessQueue.Count);
+                    Interlocked.Exchange(ref _backgroundPendingNum, _dataToProcessQueue.Count);
 
                     // 使用手动遍历来移除所有空白字符（包括空格、换行符等）
                     string cleanedData = new(data.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -608,10 +608,6 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 辅助方法：将批次添加到缓冲区
-
-
-
 
         // -------刷新UI-------
         private int _backgroundReceiveCount; // 后台计数器
@@ -619,21 +615,17 @@ namespace ZQcom.ViewModels
         private int _backgroundPendingNum=0; // 后台计数器
         private void UpdateUI()
         {
-            int count = Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 获取并重置后台计数器
-            int bytes = Interlocked.Exchange(ref _backgroundReceiveBytes, 0); // 获取并重置后台计数器
-            int pendingNum=Interlocked.Exchange(ref _backgroundPendingNum, 0);// 获取并重置后台计数器
-
             // 更新UI上的ReceiveNum
-            ReceiveNum += count; // 假设ReceiveNum是您的数据绑定属性
-            ReceiveBytes += bytes;
-            PendingNum+=pendingNum;
+            ReceiveNum += Interlocked.Exchange(ref _backgroundReceiveCount, 0); // 假设ReceiveNum是您的数据绑定属性
+            ReceiveBytes += Interlocked.Exchange(ref _backgroundReceiveBytes, 0);
+            PendingNum = Interlocked.Exchange(ref _backgroundPendingNum, 0);
 
             // 更新日志
             if (_logBuffer.Length > 0)
             {
                 lock (_logBuffer)
                 {
-                    TextEditor?.AppendText(_logBuffer.ToString());
+                    LogText?.AppendText(_logBuffer.ToString());
                     _logBuffer.Clear();
                 }
             }
@@ -643,7 +635,7 @@ namespace ZQcom.ViewModels
             {
                 lock (_extractedDataBuffer)
                 {
-                    ExtractedText += _extractedDataBuffer.ToString();
+                    ExtractedText?.AppendText(_extractedDataBuffer.ToString());
                     _extractedDataBuffer.Clear();
                 }
             }
@@ -653,10 +645,11 @@ namespace ZQcom.ViewModels
             {
                 lock (_convertedDataBuffer)
                 {
-                    ConvertedText += _convertedDataBuffer.ToString();
+                    ConvertedText?.AppendText(_convertedDataBuffer.ToString());
                     _convertedDataBuffer.Clear();
                 }
             }
+
         }
 
         // 截取数据
@@ -783,11 +776,11 @@ namespace ZQcom.ViewModels
             // 不知道为什么无法加入异步UI线程，加入后会很卡，可能与异步线程"数据处理任务”的调用有关
             if (IsDisableTimestamp)
             {
-                LogText += $" {message}{Environment.NewLine}";
+                //LogText += $" {message}{Environment.NewLine}";
             }
             else
             {
-                LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+                //LogText += $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
             }
         }
 
@@ -925,18 +918,18 @@ namespace ZQcom.ViewModels
                 EnsureDirectoryExists(Path.GetDirectoryName(logFilePath));
                 // 保存日志框
 
-                if (TextEditor?.Text != "")
+                if (LogText?.Text != "")
                 {
-                    File.WriteAllText(logFilePath, TextEditor?.Text);
+                    File.WriteAllText(logFilePath, LogText?.Text);
                     MessageBox.Show($"日志已成功保存到: {logFilePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 // 保存处理数据框
                 if (IsExtractedData)
                 {
-                    if (ExtractedText != "")
-                        File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText);
-                    if (ConvertedText != "")
-                        File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText);
+                    if (ExtractedText?.Text!= "")
+                        File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText?.Text);
+                    if (ConvertedText?.Text != "")
+                        File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText?.Text);
                 }
 
             }
@@ -970,14 +963,11 @@ namespace ZQcom.ViewModels
             if (result == MessageBoxResult.Yes)
             {
                 // 清除文本框内容
-                LogText = string.Empty;
-                ExtractedText = string.Empty;
-                ConvertedText = string.Empty;
                 _receiveQueue.Clear();//清空接收队列
                 _logQueue.Clear();
 
                 // 清除日志框
-                TextEditor?.Clear();
+                LogText?.Clear();
 
                 // 清除接收发送数据统计
                 ReceiveBytes = 0;
@@ -992,8 +982,9 @@ namespace ZQcom.ViewModels
 
 
         // ------------------------组件映射------------------------------
-        public TextEditor? TextEditor { get; set; }
-
+        public TextEditor? LogText { get; set; }// 日志框
+        public TextEditor? ExtractedText { get; set; }// 提取数据框
+        public TextEditor? ConvertedText { get; set; }// 转换数据框
 
 
 
@@ -1082,16 +1073,8 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 日志框
-        public string LogText
-        {
-            get => _logText;
-            set
-            {
-                _logText = value;
-                RaisePropertyChanged(nameof(LogText));
-            }
-        }
+       
+
 
 
         // 接收数据框
@@ -1105,28 +1088,8 @@ namespace ZQcom.ViewModels
             }
         }
 
-        // 截取数据框
-        public string ExtractedText
-        {
-            get => _extractedText;
-            set
-            {
-                _extractedText = value;
-                RaisePropertyChanged(nameof(ExtractedText));
-            }
-        }
 
 
-        // 转换数据框
-        public string ConvertedText
-        {
-            get => _convertedText;
-            set
-            {
-                _convertedText = value;
-                RaisePropertyChanged(nameof(ConvertedText));
-            }
-        }
 
         // 十六进制
         public bool IsHexSend
