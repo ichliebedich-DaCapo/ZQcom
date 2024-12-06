@@ -36,66 +36,7 @@ namespace ZQcom.ViewModels
             _eventAggregator.GetEvent<DataReceivedEvent>().Subscribe(AddDataPoint);
         }
 
-        // ------------------------数据绑定------------------------------
-        // 图表数据
-        public ChartModel ChartModel
-        {
-            get => _chartModel;
-            set
-            {
-                _chartModel = value;
-            }
-        }
 
-
-
-
-        // 图表最大数据点数属性
-        public int AxisXMaxValue
-        {
-            get => _maxChartPoints-1;
-        }
-        // 图表最大数据点数
-        public int MaxDisplayPoints
-        {
-            get => _maxChartPoints;
-            set
-            {
-                _maxChartPoints = value;
-                RaisePropertyChanged(nameof(MaxDisplayPoints));
-                RaisePropertyChanged(nameof(AxisXMaxValue));
-            }
-        }
-
-
-        // 禁用动画属性
-        public bool DisableAnimation
-        {
-            get => _isDisableAnimation;
-        }
-        // 是否禁用动画
-        public bool IsDisableAnimation
-        {
-            get => _isDisableAnimation;
-            set
-            {
-                _isDisableAnimation = value;
-                RaisePropertyChanged(nameof(IsDisableAnimation));
-                RaisePropertyChanged(nameof(DisableAnimation));
-            }
-        }
-
-
-        // 显示在图表中的数据
-        public List<double> DataDisplayChartValues
-        {
-            get => _dataDisplayChartValues;
-            set
-            {
-                _dataDisplayChartValues = value;
-                RaisePropertyChanged(nameof(DataDisplayChartValues));
-            }
-        }
 
 
         // ------------------------私有方法------------------------------
@@ -231,5 +172,68 @@ namespace ZQcom.ViewModels
         //{
         //    AddDataPoint(DateTime.Now.Millisecond % 100);
         //}
+
+
+        // ------------------------数据绑定------------------------------
+        // 图表数据
+        public ChartModel ChartModel
+        {
+            get => _chartModel;
+            set
+            {
+                _chartModel = value;
+            }
+        }
+
+
+
+
+        // 图表最大数据点数属性
+        public int AxisXMaxValue
+        {
+            get => _maxChartPoints - 1;
+        }
+        // 图表最大数据点数
+        public int MaxDisplayPoints
+        {
+            get => _maxChartPoints;
+            set
+            {
+                _maxChartPoints = value;
+                RaisePropertyChanged(nameof(MaxDisplayPoints));
+                RaisePropertyChanged(nameof(AxisXMaxValue));
+            }
+        }
+
+
+        // 禁用动画属性
+        public bool DisableAnimation
+        {
+            get => _isDisableAnimation;
+        }
+        // 是否禁用动画
+        public bool IsDisableAnimation
+        {
+            get => _isDisableAnimation;
+            set
+            {
+                _isDisableAnimation = value;
+                RaisePropertyChanged(nameof(IsDisableAnimation));
+                RaisePropertyChanged(nameof(DisableAnimation));
+            }
+        }
+
+
+        // 显示在图表中的数据
+        public List<double> DataDisplayChartValues
+        {
+            get => _dataDisplayChartValues;
+            set
+            {
+                _dataDisplayChartValues = value;
+                RaisePropertyChanged(nameof(DataDisplayChartValues));
+            }
+        }
+
     }
 }
