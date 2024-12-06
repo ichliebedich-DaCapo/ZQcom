@@ -31,7 +31,7 @@ namespace ZQcom.ViewModels
         // 内部普通变量
         private readonly SerialPortService _serialPortService;      // 串口服务对象
         private SerialPort? _serialPort;                            // 当前打开的串口实例
-        private readonly StringBuilder _signBuffer=new();           // 存储标记数据
+        private readonly StringBuilder _signBuffer = new();           // 存储标记数据
 
         // 数据绑定属性
         private string _openCloseButtonText = "打开串口";           // 打开/关闭串口按钮的文本
@@ -136,7 +136,7 @@ namespace ZQcom.ViewModels
 
         public void StopHighFrequencyReceiving()
         {
-            
+
             if (_highFrequencyReceivingCancellationTokenSource != null)
             {
                 _highFrequencyReceivingCancellationTokenSource.Cancel();
@@ -359,59 +359,59 @@ namespace ZQcom.ViewModels
         /// <summary>
         /// 启用/禁用定时发送
         /// </summary>
-    private void ToggleTimedSend()
-    {
-        lock (_timedSendTimerLock)
+        private void ToggleTimedSend()
         {
-            IsTimedSendEnabled = !IsTimedSendEnabled;
-
-            if (IsTimedSendEnabled)
-            {
-                // 如果已经存在一个计时器，先停止它
-                _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-
-                // 创建或重新配置计时器
-                _timedSendTimer = new Timer(TimedSendCallback, null, _timedSendInterval, _timedSendInterval);
-            }
-            else
-            {
-                // 停止并释放定时器资源
-                _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-                _timedSendTimer?.Dispose();
-                _timedSendTimer = null;
-            }
-        }
-    }
-
-    private void TimedSendCallback(object state)
-    {
-        try
-        {
-            // 发送数据
-            SendDataBase(SendDataText);
-        }
-        catch (Exception ex)
-        {
-            // 处理异常
-            MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-
-            // 如果发生异常，可能需要禁用定时发送以防止无限次尝试导致更多错误
             lock (_timedSendTimerLock)
             {
-                IsTimedSendEnabled = false;
-                _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-                _timedSendTimer?.Dispose();
-                _timedSendTimer = null;
+                IsTimedSendEnabled = !IsTimedSendEnabled;
+
+                if (IsTimedSendEnabled)
+                {
+                    // 如果已经存在一个计时器，先停止它
+                    _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+
+                    // 创建或重新配置计时器
+                    _timedSendTimer = new Timer(TimedSendCallback, null, _timedSendInterval, _timedSendInterval);
+                }
+                else
+                {
+                    // 停止并释放定时器资源
+                    _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                    _timedSendTimer?.Dispose();
+                    _timedSendTimer = null;
+                }
             }
         }
-    }
+
+        private void TimedSendCallback(object state)
+        {
+            try
+            {
+                // 发送数据
+                SendDataBase(SendDataText);
+            }
+            catch (Exception ex)
+            {
+                // 处理异常
+                MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // 如果发生异常，可能需要禁用定时发送以防止无限次尝试导致更多错误
+                lock (_timedSendTimerLock)
+                {
+                    IsTimedSendEnabled = false;
+                    _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                    _timedSendTimer?.Dispose();
+                    _timedSendTimer = null;
+                }
+            }
+        }
 
 
-    // ---------接收打印数据--------
-    /// -------------高频接收模式--------------
-    /// 高频接收模式下不提供处理数据、发送数据等操作
-    /// 
-    private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
+        // ---------接收打印数据--------
+        /// -------------高频接收模式--------------
+        /// 高频接收模式下不提供处理数据、发送数据等操作
+        /// 
+        private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器
@@ -424,7 +424,7 @@ namespace ZQcom.ViewModels
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 使用异步等待来避免阻塞
-                 _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
+                _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
                 try
                 {
                     while (_serialPort?.BytesToRead > 0)
@@ -509,7 +509,7 @@ namespace ZQcom.ViewModels
                     // Take 将阻塞当前线程，直到队列中有数据可用或取消标记被触发
                     string data = _smallBatchDataQueue.Take(cancellationToken);
                     // 格式化数据，用于16进制显示
-                    data= FormatData(data);
+                    data = FormatData(data);
 
                     // 打印日志数据
                     ReceiveLogMessageSmallBatch(ref data);
@@ -552,9 +552,9 @@ namespace ZQcom.ViewModels
             const int batchSize = 50; // 每批处理的数据数量
             var convertedBatch = new List<string>(batchSize);
             var extractedBatch = new List<string>(batchSize);
-            int lastExtractedTickCount= Environment.TickCount;
-            int lastConvertedTickCount= Environment.TickCount;
-            int maxProcessingInterval=300;
+            int lastExtractedTickCount = Environment.TickCount;
+            int lastConvertedTickCount = Environment.TickCount;
+            int maxProcessingInterval = 300;
             var cleanedData = new StringBuilder();
             try
             {
@@ -703,11 +703,11 @@ namespace ZQcom.ViewModels
 
         // -------刷新UI-------
         // 后台计数器
-        private int _backgroundReceiveCount=0;  // 接收数量
-        private int _backgroundReceiveBytes=0;  // 接收字节数
-        private int _backgroundPendingNum=0;    // 待处理数量
-        private int _backgroundSendCount=0;     // 发送数量
-        private int _backgroundSendBytes=0;     // 发送字节数
+        private int _backgroundReceiveCount = 0;  // 接收数量
+        private int _backgroundReceiveBytes = 0;  // 接收字节数
+        private int _backgroundPendingNum = 0;    // 待处理数量
+        private int _backgroundSendCount = 0;     // 发送数量
+        private int _backgroundSendBytes = 0;     // 发送字节数
 
         private void UpdateUI()
         {
@@ -888,14 +888,14 @@ namespace ZQcom.ViewModels
                 // 保存处理数据框
                 if (IsExtractedData)
                 {
-                    if (ExtractedText?.Text!= "")
+                    if (ExtractedText?.Text != "")
                         File.WriteAllText(logFilePath.Replace(".txt", "_extracted.txt"), ExtractedText?.Text);
                     if (ConvertedText?.Text != "")
                         File.WriteAllText(logFilePath.Replace(".txt", "_converted.txt"), ConvertedText?.Text);
                 }
 
                 // 保存标记框
-                if(_signBuffer.Length != 0)
+                if (_signBuffer.Length != 0)
                 {
                     File.WriteAllText(logFilePath.Replace(".txt", "_sign.txt"), _signBuffer.ToString());
                 }
@@ -1045,7 +1045,7 @@ namespace ZQcom.ViewModels
             }
         }
 
-     
+
 
         // 十六进制
         public bool IsHexSend
@@ -1136,7 +1136,10 @@ namespace ZQcom.ViewModels
                 // 检查起始位置
                 if (Length != -1 && value < 1)
                 {
-                    MessageBox.Show("起始位置不能小于等于0，请重新输入！");
+                    MessageBox.Show("起始位置不能小于等于0，请重新输入！",
+                            "提示",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
                     IsExtractedData = false; // 关闭截取数据
                     _startPosition = 1;
                     return;
@@ -1154,7 +1157,10 @@ namespace ZQcom.ViewModels
             {
                 if (value < -1)
                 {
-                    MessageBox.Show("-1即表示全长。长度不能小于-1，请重新输入！");
+                    MessageBox.Show("-1即表示全长。长度不能小于-1，请重新输入！",
+                            "提示",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
                     IsExtractedData = false;
                     _length = -1;
                     return;
@@ -1264,9 +1270,18 @@ namespace ZQcom.ViewModels
             set
             {
                 _isHighFrequencyReceiving = value;
-                if(value)
+                if (value)
                 {
-                    MessageBox.Show("注意！高频接收模式下适合接收2KHz以上发送速率的数据，且不提供发送数据、处理数据等操作。如果此时串口为打开状态，那么需要关闭后再重新打开才能使用");
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(
+                            "注意！高频接收模式下适合接收2KHz以上发送速率的数据，且不提供发送数据、处理数据等操作。" +
+                            "如果此时串口为打开状态，那么需要关闭后再重新打开才能使用。",
+                            "提示",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information
+                        );
+                    });
                 }
                 RaisePropertyChanged(nameof(IsHighFrequencyReceiving));
             }
