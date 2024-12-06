@@ -62,6 +62,8 @@ namespace ZQcom.ViewModels
 
         // 定时器相关
         private readonly DispatcherTimer _uiUpdateTimer;            // UI更新定时器
+        private Timer? _timedSendTimer;                             // 定时发送定时器
+        private readonly object _timedSendTimerLock = new();
 
         // 线程相关
         private CancellationTokenSource? _timedSendCancellationTokenSource;  // 用于取消定时发送任务的CancellationTokenSource
@@ -356,56 +358,59 @@ namespace ZQcom.ViewModels
         /// <summary>
         /// 启用/禁用定时发送
         /// </summary>
-        private async void ToggleTimedSend()
+    private void ToggleTimedSend()
+    {
+        lock (_timedSendTimerLock)
         {
             IsTimedSendEnabled = !IsTimedSendEnabled;
-            if (_isTimedSendEnabled)
-            {
-                _timedSendCancellationTokenSource = new CancellationTokenSource();
-                try
-                {
-                    while (true)
-                    {
-                        if (_timedSendCancellationTokenSource.Token.IsCancellationRequested)
-                        {
-                            break;
-                        }
-                        await Task.Delay(TimedSendInterval, _timedSendCancellationTokenSource.Token);
-                        // 发送数据
-                        SendDataBase(SendDataText);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // 当任务被取消时抛出的异常
-                }
-                catch (Exception ex)
-                {
-                    // 其他异常
-                        MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-                finally
-                {
-                    IsTimedSendEnabled = false;
-                }
 
+            if (IsTimedSendEnabled)
+            {
+                // 如果已经存在一个计时器，先停止它
+                _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+
+                // 创建或重新配置计时器
+                _timedSendTimer = new Timer(TimedSendCallback, null, _timedSendInterval, _timedSendInterval);
             }
             else
             {
-                // 停止定时发送
-                _timedSendCancellationTokenSource?.Cancel();
-                _timedSendCancellationTokenSource?.Dispose();
-                _timedSendCancellationTokenSource= null;
-                IsTimedSendEnabled = false;
+                // 停止并释放定时器资源
+                _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                _timedSendTimer?.Dispose();
+                _timedSendTimer = null;
             }
         }
+    }
+
+    private void TimedSendCallback(object state)
+    {
+        try
+        {
+            // 发送数据
+            SendDataBase(SendDataText);
+        }
+        catch (Exception ex)
+        {
+            // 处理异常
+            MessageBox.Show($"发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            // 如果发生异常，可能需要禁用定时发送以防止无限次尝试导致更多错误
+            lock (_timedSendTimerLock)
+            {
+                IsTimedSendEnabled = false;
+                _timedSendTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                _timedSendTimer?.Dispose();
+                _timedSendTimer = null;
+            }
+        }
+    }
 
 
-        // ---------接收打印数据--------
-        /// -------------高频接收模式--------------
-        /// 高频接收模式下不提供处理数据、发送数据等操作
-        /// 
-        private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
+    // ---------接收打印数据--------
+    /// -------------高频接收模式--------------
+    /// 高频接收模式下不提供处理数据、发送数据等操作
+    /// 
+    private readonly SemaphoreSlim _dataAvailableSignal = new(0); // 信号量
         private void OnDataReceivedHighFrequency(object? sender, SerialDataReceivedEventArgs e)
         {
             Interlocked.Increment(ref _backgroundReceiveCount); // 增加后台计数器

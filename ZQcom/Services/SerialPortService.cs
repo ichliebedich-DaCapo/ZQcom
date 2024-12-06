@@ -65,5 +65,7 @@ namespace ZQcom.Services
         {
                 port.Write(data, 0, data.Length);
         }
+
+        
     }
 }
