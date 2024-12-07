@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
-using System.Windows.Controls;
 using System.IO.Ports;
-using System.Windows.Media;
 using System.Windows;
 using ZQcom.Models;
 using ZQcom.Services;
@@ -15,10 +12,8 @@ using ZQcom.Events;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Concurrent;
-using ZQcom.Helpers;
 using System.Windows.Threading;
 using ICSharpCode.AvalonEdit;
-
 /// 编程守则：
 
 
@@ -26,7 +21,7 @@ using ICSharpCode.AvalonEdit;
 
 namespace ZQcom.ViewModels
 {
-    public class SerialPortViewModel : ViewModelBase
+    public partial class SerialPortViewModel : ViewModelBase
     {
         // 内部普通变量
         private readonly SerialPortService _serialPortService;      // 串口服务对象
@@ -507,20 +502,27 @@ namespace ZQcom.ViewModels
             }
         }
 
+        // 尝试使用手动去替换换行，结果发现会卡死，还不如正则表达式。真是奇怪
+        private readonly StringBuilder _receiveLogMessageBuffer = new();
+
+        // 使用 GeneratedRegexAttribute 定义正则表达式
+        [GeneratedRegex(@"(\r\n|\r|\n)")]
+        private static partial Regex LineBreakRegex();
+        
         private void ReceiveLogMessageHighFrequency(string inputData, string timestamp)
         {
-            var sb = new StringBuilder();
-            var value = inputData.Replace("\0", "\\0");
+            // 替换 \0 为 \\0，并使用生成的正则表达式替换换行符
+            var logEntry = LineBreakRegex().Replace(inputData.Replace("\0", "\\0"), $"\r\n[{timestamp}]>> ");
 
-            // 使用正则表达式替换换行符，并添加时间戳
-            var logEntry = Regex.Replace(value, @"(\r\n|\r|\n)", $"\r\n[{timestamp}]>> ");
-            sb.Append(logEntry);
+            // 将日志条目追加到缓冲区
+            _receiveLogMessageBuffer.Append(logEntry);
 
             // 异步更新UI
-            Application.Current.Dispatcher.InvokeAsync((Action)(() =>
+            Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                this.LogText?.AppendText(sb.ToString());
-            }));
+                this.LogText?.AppendText(_receiveLogMessageBuffer.ToString());
+                _receiveLogMessageBuffer.Clear(); // 清空缓冲区
+            });
         }
 
 
@@ -536,17 +538,66 @@ namespace ZQcom.ViewModels
 
         // 用于累积日志数据
         private readonly StringBuilder _logBuffer = new();
+        // 缓存接收日志数据
         private void ReceiveLogMessageSmallBatch(ref string inputData)
         {
             // 缓存当前时间的格式化字符串
-            var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            string timestamp = IsDisableTimestamp ? "" : $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
+
+            // 手动替换 \r 或 \n 为 \r\n，比正则表达式更为高效
+            char[] inputChars = inputData.ToCharArray();
+            List<char> outputChars = [];
+            for (int i = 0; i < inputChars.Length; i++)
+            {
+                if (inputChars[i] == '\n')
+                {
+                    if (i > 0 && inputChars[i - 1] == '\r')
+                    {
+                        continue; // 跳过已经存在的 \r\n
+                    }
+                    outputChars.Add('\r');
+                    outputChars.Add('\n');
+                }
+                else if (inputChars[i] == '\r')
+                {
+                    if (i + 1 < inputChars.Length && inputChars[i + 1] == '\n')
+                    {
+                        outputChars.Add('\r');
+                        outputChars.Add('\n');
+                        i++; // 跳过下一个字符 \n
+                    }
+                    else
+                    {
+                        outputChars.Add('\r');
+                        outputChars.Add('\n');
+                    }
+                }
+                else
+                {
+                    outputChars.Add(inputChars[i]);
+                }
+            }
+
+            // 将字符列表转换回字符串
+            inputData = new string(outputChars.ToArray());
 
             // 使用 AppendFormat 减少方法调用次数
             lock (_logBuffer)
             {
-                _logBuffer.AppendFormat("[{0}]>> {1}{2}", now, inputData, Environment.NewLine);
+                if (inputData.EndsWith("\r\n"))
+                {
+                    _logBuffer.AppendFormat("{0}>> {1}", timestamp, inputData);
+                }
+                else
+                {
+                    _logBuffer.AppendFormat("{0}>> {1}\r\n", timestamp, inputData);
+                }
             }
         }
+
+
+
+
 
         private void ProcessSmallBatchData(CancellationToken cancellationToken)
         {
