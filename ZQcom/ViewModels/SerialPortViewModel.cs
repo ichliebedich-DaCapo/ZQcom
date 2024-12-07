@@ -466,8 +466,8 @@ namespace ZQcom.ViewModels
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                // 使用异步等待来避免阻塞
-                _dataAvailableSignal.WaitAsync(cancellationToken); // 等待数据可用信号
+                _dataAvailableSignal.Wait(cancellationToken); // 等待数据可用信号
+
                 try
                 {
                     while (_serialPort?.BytesToRead > 0)
