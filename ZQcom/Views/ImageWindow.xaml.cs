@@ -6,9 +6,11 @@ using ScottPlot;
 
 namespace ZQcom.Views
 {
+    
     public partial class ImageWindow : Window
     {
-
+        // 图片类型
+        private string image_type;
         /// <summary>
         ///  柱状图
         /// </summary>
@@ -26,6 +28,8 @@ namespace ZQcom.Views
             ImagePlot.Plot.XLabel("Frequency Index");
             ImagePlot.Plot.YLabel("Magnitude");
 
+            // 图片类型
+            image_type = "Bars";
         }
         /// <summary>
         /// 折线图
@@ -40,9 +44,28 @@ namespace ZQcom.Views
             ImagePlot.Plot.Add.Scatter(xData, inputData);
 
             ImagePlot.Plot.Title(title);
-            ImagePlot.Plot.XLabel("Frequency Index");
+            ImagePlot.Plot.XLabel("Index");
             ImagePlot.Plot.YLabel("Magnitude");
+
+            // 图片类型
+            image_type = "Scatter";
            
+        }
+
+        private void SaveImageButton_Click(object sender, RoutedEventArgs e)
+        {
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            // 定义并创建 Picture 文件夹
+            string pictureFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Picture");
+            Directory.CreateDirectory(pictureFolderPath);  // 如果目录不存在，则创建
+
+            // 组合图片的完整路径
+            string imagePath = Path.Combine(pictureFolderPath, $"{timestamp}_{image_type}.png");
+
+            // 保存图片到指定路径
+            ImagePlot.Plot.SavePng(imagePath, 400, 300);
+            MessageBox.Show("保存图片成功");
         }
     }
 }

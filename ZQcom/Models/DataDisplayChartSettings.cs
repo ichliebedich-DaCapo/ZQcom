@@ -20,5 +20,9 @@ namespace ZQcom.Models
         public int StepSize { get; set; } = 1;
         // 窗口宽度
         public int WindowWidth { get; set; } = 500;
+        // 图片宽度
+        public int ImageWidth { get; set; } = 800;
+        // 图片高度
+        public int ImageHeight { get; set; } = 600;
     }
 }

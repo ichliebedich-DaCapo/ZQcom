@@ -4,6 +4,7 @@ using MathNet.Numerics.IntegralTransforms;
 using ScottPlot;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -76,7 +77,9 @@ namespace ZQcom.ViewModels
                 FFTLengthInput = FFTLengthInput,
                 ThresholdInput = ThresholdInput,
                 StepSize = StepSize,
-                WindowWidth = WindowWidth
+                WindowWidth = WindowWidth,
+                ImageWidth = ImageWidth,
+                ImageHeight = ImageHeight
             };
         }
         // 设置串口参数
@@ -88,6 +91,8 @@ namespace ZQcom.ViewModels
             ThresholdInput = settings.ThresholdInput;
             StepSize = settings.StepSize;
             WindowWidth = settings.WindowWidth;
+            ImageWidth = settings.ImageWidth;
+            ImageHeight = settings.ImageHeight;
         }
 
         private float[] ComputeFFT(double[] data)
@@ -159,7 +164,7 @@ namespace ZQcom.ViewModels
         public ICommand SmoothDataCommand => new RelayCommand(SmoothData);
         public ICommand DeleteAbnormalDataCommand => new RelayCommand(DeleteAbnormalData);
         public ICommand SaveImageCommand => new RelayCommand(SaveImage);
-
+        public ICommand OpenPictureDirectoryCommand => new RelayCommand(OpenPictureDirectory);
         private void FFT()
         {
             int startIndex =FFTStartIndexInput;
@@ -271,6 +276,7 @@ namespace ZQcom.ViewModels
             DataChartPlot?.Refresh();
         }
 
+        // 保存图片
         private void SaveImage()
         {
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -283,8 +289,26 @@ namespace ZQcom.ViewModels
             string imagePath = Path.Combine(pictureFolderPath, $"{timestamp}.png");
 
             // 保存图片到指定路径
-            DataChartPlot?.Plot.SavePng(imagePath, 400, 300);
+            DataChartPlot?.Plot.SavePng(imagePath, ImageWidth, ImageHeight);
             MessageBox.Show("保存图片成功");
+        }
+
+
+        // 打开图片目录
+        public void OpenPictureDirectory()
+        {
+            // 定义并创建 Picture 文件夹
+            string pictureFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Picture");
+            Directory.CreateDirectory(pictureFolderPath);  // 如果目录不存在，则创建
+
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", pictureFolderPath));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开日志文件夹时发生错误: {ex.Message}");
+            }
         }
 
         // ---------------------------数据绑定--------------------------------
@@ -360,6 +384,28 @@ namespace ZQcom.ViewModels
             }
         }
 
+        // 图片宽度
+        private int _imageWidth;
+        public int ImageWidth
+        {
+            get => _imageWidth;
+            set
+            {
+                _imageWidth = value;
+                RaisePropertyChanged(nameof(ImageWidth));
+            }
+        }
 
+        // 图片高度
+        private int _imageHeight;
+        public int ImageHeight
+        {
+            get => _imageHeight;
+            set
+            {
+                _imageHeight = value;
+                RaisePropertyChanged(nameof(ImageHeight));
+            }
+        }
     }
 }

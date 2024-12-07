@@ -3,6 +3,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         Title="Image Result" Height="600" Width="800">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top row for buttons and input fields -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5" >
+            <Button Content="Save" Margin="0,0,5,0" Width="50" Click="SaveImageButton_Click"/>
+        </StackPanel>
+
+
         <sp:WpfPlot Name="ImagePlot" Grid.Row="1"/>
     </Grid>
 </Window>

@@ -20,8 +20,10 @@
             <TextBox  Text="{Binding WindowWidth}" Width="50" Margin="0,0,5,0"/>
             <Button Content="Delete abnormal data" Command="{Binding DeleteAbnormalDataCommand}" Margin="0,0,5,0"/>
             <TextBox Text="{Binding ThresholdInput}" Width="50" Margin="0,0,5,0"/>
-
             <Button Content="Save" Command="{Binding SaveImageCommand}" Margin="0,0,5,0"/>
+            <TextBox Text="{Binding ImageWidth}" Width="50" Margin="0,0,5,0"/>
+            <TextBox  Text="{Binding ImageHeight}" Width="50" Margin="0,0,5,0"/>
+            <Button Content="OpenDirectory" Command="{Binding OpenPictureDirectoryCommand}" Margin="0,0,5,0"/>
         </StackPanel>
 
         <!-- Bottom row for ScottPlot control -->
