@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Collections.Concurrent;
 using System.Windows.Threading;
 using ICSharpCode.AvalonEdit;
+using Newtonsoft.Json.Linq;
 /// 编程守则：
 
 
@@ -249,6 +250,22 @@ namespace ZQcom.ViewModels
             IsDisableTimestamp = settings.IsDisableTimestamp;
             IsEnableChart = settings.IsEnableChart;
             IsHighFrequencyReceiving = settings.IsHighFrequencyReceiving;
+
+            // --------------提示信息---------------
+            if (IsHighFrequencyReceiving)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show(
+                        "注意！高频接收模式下适合接收2KHz以上发送速率的数据，且不提供发送数据、处理数据等操作。" +
+                        "如果此时串口为打开状态，那么需要关闭后再重新打开才能使用。",
+                        "提示",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information
+                    );
+                });
+            }
+
         }
 
         // ---------------------------------绑定事件----------------------------------------
@@ -463,17 +480,17 @@ namespace ZQcom.ViewModels
         public void ReadTaskHighFrequency(CancellationToken cancellationToken)
         {
             const int BatchSize = 1024; // 批量读取大小
+            byte[] buffer = new byte[BatchSize]; // 预先分配缓冲区
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                _dataAvailableSignal.Wait(cancellationToken); // 等待数据可用信号
-
                 try
                 {
-                    while (_serialPort?.BytesToRead > 0)
+                    _dataAvailableSignal.Wait(cancellationToken); // 等待数据可用信号
+
+                    while (_serialPort?.BytesToRead > 0 && !cancellationToken.IsCancellationRequested)
                     {
-                        var buffer = new byte[Math.Min(_serialPort.BytesToRead, BatchSize)];
-                        int bytesRead = _serialPort.Read(buffer, 0, buffer.Length);
+                        int bytesRead = _serialPort.Read(buffer, 0, Math.Min(_serialPort.BytesToRead, BatchSize));
 
                         if (bytesRead > 0)
                         {
@@ -484,20 +501,20 @@ namespace ZQcom.ViewModels
                             string data = _serialPort.Encoding.GetString(buffer, 0, bytesRead);
                             ReceiveLogMessageHighFrequency(data, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                         }
-
-                        // 防止CPU占用过高，使用异步延迟
-                        Task.Delay(10, cancellationToken);
                     }
+
+                    // 如果没有数据可读，让线程休眠一段时间
+                    Thread.Sleep(10);
                 }
                 catch (OperationCanceledException)
                 {
                     // 任务被取消，正常退出
                     break;
                 }
-                catch
+                catch (Exception ex)
                 {
                     // 处理异常
-                    continue;
+                    Console.WriteLine($"Error: {ex.Message}");
                 }
             }
         }
@@ -539,47 +556,16 @@ namespace ZQcom.ViewModels
         // 用于累积日志数据
         private readonly StringBuilder _logBuffer = new();
         // 缓存接收日志数据
+        // 使用 GeneratedRegexAttribute 定义正则表达式
+        [GeneratedRegex(@"(?<!\r)\n|\r(?!\n)")]
+        private static partial Regex NormalizeNewLines();
         private void ReceiveLogMessageSmallBatch(ref string inputData)
         {
             // 缓存当前时间的格式化字符串
             string timestamp = IsDisableTimestamp ? "" : $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
 
-            // 手动替换 \r 或 \n 为 \r\n，比正则表达式更为高效
-            char[] inputChars = inputData.ToCharArray();
-            List<char> outputChars = [];
-            for (int i = 0; i < inputChars.Length; i++)
-            {
-                if (inputChars[i] == '\n')
-                {
-                    if (i > 0 && inputChars[i - 1] == '\r')
-                    {
-                        continue; // 跳过已经存在的 \r\n
-                    }
-                    outputChars.Add('\r');
-                    outputChars.Add('\n');
-                }
-                else if (inputChars[i] == '\r')
-                {
-                    if (i + 1 < inputChars.Length && inputChars[i + 1] == '\n')
-                    {
-                        outputChars.Add('\r');
-                        outputChars.Add('\n');
-                        i++; // 跳过下一个字符 \n
-                    }
-                    else
-                    {
-                        outputChars.Add('\r');
-                        outputChars.Add('\n');
-                    }
-                }
-                else
-                {
-                    outputChars.Add(inputChars[i]);
-                }
-            }
-
-            // 将字符列表转换回字符串
-            inputData = new string(outputChars.ToArray());
+            // 使用正则表达式将单独的 \r 或 \n 替换为 \r\n
+            inputData = NormalizeNewLines().Replace(inputData, "\r\n");
 
             // 使用 AppendFormat 减少方法调用次数
             lock (_logBuffer)
@@ -1354,22 +1340,11 @@ namespace ZQcom.ViewModels
             set
             {
                 _isHighFrequencyReceiving = value;
-                if (value)
-                {
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        MessageBox.Show(
-                            "注意！高频接收模式下适合接收2KHz以上发送速率的数据，且不提供发送数据、处理数据等操作。" +
-                            "如果此时串口为打开状态，那么需要关闭后再重新打开才能使用。",
-                            "提示",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information
-                        );
-                    });
-                }
                 RaisePropertyChanged(nameof(IsHighFrequencyReceiving));
             }
         }
+
+
 
 
         //// 用于测试图表性能
