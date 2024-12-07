@@ -18,33 +18,69 @@ namespace ZQcom.ViewModels
     {
         private bool _isFFTDisplayed = false;
         private ScottPlot.Plottables.BarPlot? _fftSeries;
-        private List<double> _dataValues;
-        private readonly List<double> _signIndex;
+        public List<double> _dataValues;
+        public List<double> _signIndex;
 
-        public  ScottPlot.WPF.WpfPlot? _dataChartPlot;
+        // 
+        public  ScottPlot.WPF.WpfPlot? DataChartPlot;
 
-        public DataDisplayChartViewModel(List<double> dataValues, List<double> signIndex,DataDisplayChartSettings settings) 
-        { 
-        _dataValues = dataValues;
+        public DataDisplayChartViewModel(List<double> dataValues, List<double> signIndex, DataDisplayChartSettings settings)
+        {
+            _dataValues = dataValues;
             _signIndex = signIndex;
-        
+
+            SetSettings(settings);
         }
 
 
         // ----------------------------内部方法----------------------------
+        // 绘制最初的图形
+        public void InitChart()
+        {
+            // 生成X轴数据
+            List<double> xData = Enumerable.Range(0, _dataValues.Count).Select(i => (double)i).ToList();
+
+            // 检查数据是否为空
+            if (_dataValues.Count == 0)
+            {
+                MessageBox.Show("没有任何数据。");
+                return;
+            }
+
+            // 添加数据到现有的 WpfPlot 控件
+            DataChartPlot?.Plot.Add.Scatter(xData, _dataValues);
+            DataChartPlot?.Plot.XLabel("Index");
+            DataChartPlot?.Plot.YLabel("Value");
+
+            // 添加标记
+            foreach (double index in _signIndex)
+            {
+                DataChartPlot?.Plot.Add.VerticalLine(index);
+            }
+
+            DataChartPlot?.Plot.Axes.AutoScale();
+            // 刷新 WpfPlot 控件以显示更新后的图表
+            DataChartPlot?.Refresh();
+        }
+
         // 获取配置
         public DataDisplayChartSettings GetSettings()
         {
             return new DataDisplayChartSettings
             {
-
+                IsEnableNewFFTWindow = IsEnableNewFFTWindow,
+                FFTStartIndexInput = FFTStartIndexInput,
+                FFTLengthInput = FFTLengthInput,
+                ThresholdInput = ThresholdInput
             };
         }
         // 设置串口参数
         public void SetSettings(DataDisplayChartSettings settings)
         {
-
-
+            IsEnableNewFFTWindow = settings.IsEnableNewFFTWindow;
+            FFTStartIndexInput = settings.FFTStartIndexInput;
+            FFTLengthInput = settings.FFTLengthInput;
+            ThresholdInput = settings.ThresholdInput;
         }
 
 
@@ -55,7 +91,7 @@ namespace ZQcom.ViewModels
             int startIndex =FFTStartIndexInput;
             int length = FFTLengthInput;
 
-            if (startIndex == -1 && length == -1)
+            if (length == -1)
             {
                 startIndex = 0;
                 length = _dataValues.Count;
@@ -106,18 +142,18 @@ namespace ZQcom.ViewModels
         private void DisplayFFT(float[] fftResult)
         {
             List<double> xData = Enumerable.Range(0, fftResult.Length).Select(i => (double)i).ToList();
-            _fftSeries = _dataChartPlot?.Plot.Add.Bars(xData, fftResult);
-            _dataChartPlot?.Refresh();
+            _fftSeries = DataChartPlot?.Plot.Add.Bars(xData, fftResult);
+            DataChartPlot?.Refresh();
         }
 
         private void RemoveFFTPlot()
         {
             if (_fftSeries != null)
             {
-                _dataChartPlot?.Plot.Remove(_fftSeries);
+                DataChartPlot?.Plot.Remove(_fftSeries);
                 _fftSeries = null;
             }
-            _dataChartPlot?.Refresh();
+            DataChartPlot?.Refresh();
         }
 
         private void SmoothButton_Click(object sender, RoutedEventArgs e)
@@ -135,24 +171,24 @@ namespace ZQcom.ViewModels
             List<double> xData = Enumerable.Range(0, _dataValues.Count).Select(i => (double)i).ToList();
 
             // Clear existing plots
-            _dataChartPlot?.Plot.Clear();
+            DataChartPlot?.Plot.Clear();
 
             // Add updated data to the _dataChartPlot?
-            _dataChartPlot?.Plot.Add.Scatter(xData, _dataValues);
-            _dataChartPlot?.Plot.XLabel("Index");
-            _dataChartPlot?.Plot.YLabel("Value");
+            DataChartPlot?.Plot.Add.Scatter(xData, _dataValues);
+            DataChartPlot?.Plot.XLabel("Index");
+            DataChartPlot?.Plot.YLabel("Value");
 
             // Add markers
             foreach (double index in _signIndex)
             {
                 if (index < _dataValues.Count)
                 {
-                    _dataChartPlot?.Plot.Add.VerticalLine(index);
+                    DataChartPlot?.Plot.Add.VerticalLine(index);
                 }
             }
 
-            _dataChartPlot?.Plot.Axes.AutoScale();
-            _dataChartPlot?.Refresh();
+            DataChartPlot?.Plot.Axes.AutoScale();
+            DataChartPlot?.Refresh();
         }
 
         private void DisplayFFTInNewWindow(float[] fftResult)
@@ -175,7 +211,7 @@ namespace ZQcom.ViewModels
         }
 
         // FFT起始位置
-        private int _FFTStartIndexInput=-1;
+        private int _FFTStartIndexInput;
         public int FFTStartIndexInput
         {
             get => _FFTStartIndexInput;
@@ -187,7 +223,7 @@ namespace ZQcom.ViewModels
         }
 
         // FFT长度
-        private int _FFTLengthInput=-1;
+        private int _FFTLengthInput;
         public int FFTLengthInput
         {
             get => _FFTLengthInput;
@@ -199,7 +235,7 @@ namespace ZQcom.ViewModels
         }
 
         // 阈值
-        private int _thresholdInput=100;
+        private int _thresholdInput;
         public int ThresholdInput
         {
             get => _thresholdInput;
