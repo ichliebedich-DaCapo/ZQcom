@@ -5,6 +5,7 @@ using MathNet.Numerics.IntegralTransforms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 
 namespace ZQcom.Models
 {
@@ -122,12 +123,13 @@ namespace ZQcom.Models
             }
         }
 
+        // ---------------------------------事件绑定-------------------------------
         public void FFT()
         {
             if (Series[0].Values.Count == 0)
             {
-                // 还是英文吧，省得有什么编码问题闹心
-                throw new InvalidOperationException("Data series is empty");
+                MessageBox.Show("没有可用数据进行FFT变换。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
 
             if (Series[1].Values.Count > 0)
