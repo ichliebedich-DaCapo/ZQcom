@@ -4,6 +4,7 @@ using MathNet.Numerics.IntegralTransforms;
 using ScottPlot;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,7 +18,9 @@ namespace ZQcom.ViewModels
     public class DataDisplayChartViewModel :ViewModelBase
     {
         private bool _isFFTDisplayed = false;
+        private bool _isSmoothDataDisplayed = false;
         private ScottPlot.Plottables.BarPlot? _fftSeries;
+        private ScottPlot.Plottables.Scatter? _smoothSeries;
         public List<double> _dataValues;
         public List<double> _signIndex;
 
@@ -68,62 +71,23 @@ namespace ZQcom.ViewModels
         {
             return new DataDisplayChartSettings
             {
-                IsEnableNewFFTWindow = IsEnableNewFFTWindow,
+                IsEnableNewWindow = IsEnableNewWindow,
                 FFTStartIndexInput = FFTStartIndexInput,
                 FFTLengthInput = FFTLengthInput,
-                ThresholdInput = ThresholdInput
+                ThresholdInput = ThresholdInput,
+                StepSize = StepSize,
+                WindowWidth = WindowWidth
             };
         }
         // 设置串口参数
         public void SetSettings(DataDisplayChartSettings settings)
         {
-            IsEnableNewFFTWindow = settings.IsEnableNewFFTWindow;
+            IsEnableNewWindow = settings.IsEnableNewWindow;
             FFTStartIndexInput = settings.FFTStartIndexInput;
             FFTLengthInput = settings.FFTLengthInput;
             ThresholdInput = settings.ThresholdInput;
-        }
-
-
-        // ----------------------------事件绑定----------------------------
-        public ICommand FFTCommand => new RelayCommand(FFT);
-        public ICommand DeleteAbnormalDataCommand => new RelayCommand(DeleteAbnormalData);
-
-        private void FFT()
-        {
-            int startIndex =FFTStartIndexInput;
-            int length = FFTLengthInput;
-
-            if (length == -1)
-            {
-                startIndex = 0;
-                length = _dataValues.Count;
-            }
-            else if (length > _dataValues.Count - startIndex || startIndex >= _dataValues.Count)
-            {
-                MessageBox.Show("无效的起始位置或长度。");
-                return;
-            }
-
-            var fftData = _dataValues.Skip(startIndex).Take(length).ToArray();
-            var fftResult = ComputeFFT(fftData);
-
-            if (IsEnableNewFFTWindow)
-            {
-                DisplayFFTInNewWindow(fftResult);
-            }
-            else
-            {
-                // Toggle display of FFT result
-                if (_isFFTDisplayed)
-                {
-                    RemoveFFTPlot();
-                }
-                else
-                {
-                    DisplayFFT(fftResult);
-                }
-                _isFFTDisplayed = !_isFFTDisplayed;
-            }
+            StepSize = settings.StepSize;
+            WindowWidth = settings.WindowWidth;
         }
 
         private float[] ComputeFFT(double[] data)
@@ -158,10 +122,124 @@ namespace ZQcom.ViewModels
             DataChartPlot?.Refresh();
         }
 
-        private void SmoothButton_Click(object sender, RoutedEventArgs e)
+        private static void DisplayFFTInNewWindow(float[] fftResult)
         {
-            // Placeholder for smooth button functionality
-            MessageBox.Show("Smoothing not yet implemented.");
+            var fftWindow = new ImageWindow(fftResult, "FFT Result");
+            fftWindow.Show();
+        }
+
+
+        // 平滑数据处理
+        private void DisplaySmoothData(List<double> smoothedData)
+        {
+            List<double> xData = Enumerable.Range(0, smoothedData.Count).Select(i => (double)i).ToList();
+            _smoothSeries = DataChartPlot?.Plot.Add.Scatter(xData, smoothedData);
+            DataChartPlot?.Refresh();
+        }
+
+        private void RemoveSmoothDataPlot()
+        {
+            if (_smoothSeries != null)
+            {
+                DataChartPlot?.Plot.Remove(_smoothSeries);
+                _smoothSeries = null;
+            }
+            DataChartPlot?.Refresh();
+        }
+
+        private static void DisplaySmoothDataInNewWindow(List<double> smoothedData)
+        {
+            // 创建一个新窗口，并传递转换后的 float数组
+            var smoothDataWindow = new ImageWindow(smoothedData, "SmoothData Result");
+            smoothDataWindow.Show();
+        }
+
+        // ----------------------------事件绑定----------------------------
+        public ICommand FFTCommand => new RelayCommand(FFT);
+        public ICommand SmoothDataCommand => new RelayCommand(SmoothData);
+        public ICommand DeleteAbnormalDataCommand => new RelayCommand(DeleteAbnormalData);
+        public ICommand SaveImageCommand => new RelayCommand(SaveImage);
+
+        private void FFT()
+        {
+            int startIndex =FFTStartIndexInput;
+            int length = FFTLengthInput;
+
+            if (length == -1)
+            {
+                startIndex = 0;
+                length = _dataValues.Count;
+            }
+            else if (length > _dataValues.Count - startIndex || startIndex >= _dataValues.Count)
+            {
+                MessageBox.Show("无效的起始位置或长度。");
+                return;
+            }
+
+            var fftData = _dataValues.Skip(startIndex).Take(length).ToArray();
+            var fftResult = ComputeFFT(fftData);
+
+            if (IsEnableNewWindow)
+            {
+                DisplayFFTInNewWindow(fftResult);
+            }
+            else
+            {
+                // Toggle display of FFT result
+                if (_isFFTDisplayed)
+                {
+                    RemoveFFTPlot();
+                }
+                else
+                {
+                    DisplayFFT(fftResult);
+                }
+                _isFFTDisplayed = !_isFFTDisplayed;
+            }
+        }
+
+
+
+        public void SmoothData()
+        {
+            if (_dataValues == null || _dataValues.Count == 0 || WindowWidth <= 0 || StepSize <= 0)
+            {
+                MessageBox.Show("没有有效的数据");
+                return; // 确保在这种情况下函数提前返回
+            }
+
+            List<double> smoothedData = []; // 使用List<double>而非数组
+
+            for (int i = 0; i <= _dataValues.Count - WindowWidth; i += StepSize)
+            {
+                double sum = 0;
+                for (int j = 0; j < WindowWidth; j++)
+                {
+                    sum += _dataValues[i + j];
+                }
+                double average = sum / WindowWidth;
+                smoothedData.Add(average); // 正确地使用.Add()方法
+            }
+
+
+            if (IsEnableNewWindow)
+            {
+                DisplaySmoothDataInNewWindow(smoothedData);
+            }
+            else
+            {
+                // Toggle display of FFT result
+                if (_isSmoothDataDisplayed)
+                {
+                    RemoveSmoothDataPlot();
+                }
+                else
+                {
+                    DisplaySmoothData(smoothedData);
+                }
+                _isSmoothDataDisplayed = !_isSmoothDataDisplayed;
+            }
+
         }
 
         private void DeleteAbnormalData()
@@ -193,22 +271,32 @@ namespace ZQcom.ViewModels
             DataChartPlot?.Refresh();
         }
 
-        private static void DisplayFFTInNewWindow(float[] fftResult)
+        private void SaveImage()
         {
-            var fftWindow = new FFTWindow(fftResult);
-            fftWindow.Show();
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            // 定义并创建 Picture 文件夹
+            string pictureFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Picture");
+            Directory.CreateDirectory(pictureFolderPath);  // 如果目录不存在，则创建
+
+            // 组合图片的完整路径
+            string imagePath = Path.Combine(pictureFolderPath, $"{timestamp}.png");
+
+            // 保存图片到指定路径
+            DataChartPlot?.Plot.SavePng(imagePath, 400, 300);
+            MessageBox.Show("保存图片成功");
         }
 
         // ---------------------------数据绑定--------------------------------
         // 是否启用新窗口
-        private bool _isEnableNewFFTWindow;
-        public bool IsEnableNewFFTWindow
+        private bool _isEnableNewWindow;
+        public bool IsEnableNewWindow
         {
-            get => _isEnableNewFFTWindow;
+            get => _isEnableNewWindow;
             set
             {
-                _isEnableNewFFTWindow = value;
-                RaisePropertyChanged(nameof(IsEnableNewFFTWindow)); // 触发属性更改通知
+                _isEnableNewWindow = value;
+                RaisePropertyChanged(nameof(IsEnableNewWindow)); // 触发属性更改通知
             }
         }
 
@@ -248,6 +336,29 @@ namespace ZQcom.ViewModels
             }
         }
 
+        // 步长
+        private int _stepSize;
+        public int StepSize
+        {
+            get => _stepSize;
+            set
+            {
+                _stepSize = value;
+                RaisePropertyChanged(nameof(StepSize));
+            }
+        }
+
+        // 窗口长度
+        private int _windowWidth;
+        public int WindowWidth
+        {
+            get => _windowWidth;
+            set
+            {
+                _windowWidth = value;
+                RaisePropertyChanged(nameof(WindowWidth));
+            }
+        }
 
 
     }

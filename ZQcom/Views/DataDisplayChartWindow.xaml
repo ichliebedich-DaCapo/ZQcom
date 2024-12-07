@@ -12,12 +12,16 @@
         <!-- Top row for buttons and input fields -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
             <Button Content="FFT" Command="{Binding FFTCommand}" Margin="0,0,5,0"/>
-            <CheckBox Content="NewWindow" IsChecked="{Binding IsEnableNewFFTWindow}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <CheckBox Content="NewWindow" IsChecked="{Binding IsEnableNewWindow}" VerticalAlignment="Center" Margin="0,0,5,0"/>
             <TextBox Text="{Binding FFTStartIndexInput}" Width="50" Margin="0,0,5,0"/>
             <TextBox  Text="{Binding FFTLengthInput}" Width="50" Margin="0,0,5,0"/>
-            <Button Content="Smooth" Margin="0,0,5,0"/>
+            <Button Content="Smooth"  Command="{Binding SmoothDataCommand}" Margin="0,0,5,0"/>
+            <TextBox Text="{Binding StepSize}" Width="50" Margin="0,0,5,0"/>
+            <TextBox  Text="{Binding WindowWidth}" Width="50" Margin="0,0,5,0"/>
             <Button Content="Delete abnormal data" Command="{Binding DeleteAbnormalDataCommand}" Margin="0,0,5,0"/>
             <TextBox Text="{Binding ThresholdInput}" Width="50" Margin="0,0,5,0"/>
+
+            <Button Content="Save" Command="{Binding SaveImageCommand}" Margin="0,0,5,0"/>
         </StackPanel>
 
         <!-- Bottom row for ScottPlot control -->
