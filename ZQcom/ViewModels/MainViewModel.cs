@@ -17,8 +17,6 @@ namespace ZQcom.ViewModels
             _serialPortViewModel = new SerialPortViewModel(_eventAggregator);
             _chartViewModel = new ChartViewModel(_eventAggregator);
 
-            // 调试信息
-            System.Diagnostics.Debug.WriteLine("MainViewModel initialized");
         }
 
         public SerialPortViewModel SerialPortViewModel => _serialPortViewModel;
