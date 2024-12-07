@@ -6,6 +6,7 @@ using ScottPlot;
 using ZQcom.ViewModels;
 using ScottPlot.WPF;
 using MathNet.Numerics.IntegralTransforms;
+using System.Windows.Media.Imaging;
 
 namespace ZQcom.Views
 {
@@ -72,17 +73,23 @@ namespace ZQcom.Views
             var fftData = _dataValues.Skip(startIndex).Take(length).ToArray();
             var fftResult = ComputeFFT(fftData);
 
-            // Toggle display of FFT result
-            if (_isFFTDisplayed)
+            if (OpenNewWindowCheckbox.IsChecked.Value)
             {
-                RemoveFFTPlot();
+                DisplayFFTInNewWindow(fftResult);
             }
             else
             {
-                DisplayFFT(fftResult);
+                // Toggle display of FFT result
+                if (_isFFTDisplayed)
+                {
+                    RemoveFFTPlot();
+                }
+                else
+                {
+                    DisplayFFT(fftResult);
+                }
+                _isFFTDisplayed = !_isFFTDisplayed;
             }
-
-            _isFFTDisplayed = !_isFFTDisplayed;
         }
 
         private float[] ComputeFFT(double[] data)
@@ -121,6 +128,41 @@ namespace ZQcom.Views
         {
             // Placeholder for smooth button functionality
             MessageBox.Show("Smoothing not yet implemented.");
+        }
+
+        private void RemoveOutliersButton_Click(object sender, RoutedEventArgs e)
+        {
+            double threshold = double.Parse(ThresholdInput.Text);
+            _dataValues = _dataValues.Where(value => Math.Abs(value) <= threshold).ToList();
+
+            // Regenerate X-axis data
+            List<double> xData = Enumerable.Range(0, _dataValues.Count).Select(i => (double)i).ToList();
+
+            // Clear existing plots
+            plot.Plot.Clear();
+
+            // Add updated data to the plot
+            plot.Plot.Add.Scatter(xData, _dataValues);
+            plot.Plot.XLabel("Index");
+            plot.Plot.YLabel("Value");
+
+            // Add markers
+            foreach (double index in _signIndex)
+            {
+                if (index < _dataValues.Count)
+                {
+                    plot.Plot.Add.VerticalLine(index);
+                }
+            }
+
+            plot.Plot.Axes.AutoScale();
+            plot.Refresh();
+        }
+
+        private void DisplayFFTInNewWindow(float[] fftResult)
+        {
+            var fftWindow = new FFTWindow(fftResult);
+            fftWindow.Show();
         }
     }
 }

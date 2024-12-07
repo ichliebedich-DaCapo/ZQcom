@@ -12,9 +12,12 @@
         <!-- Top row for buttons and input fields -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
             <Button Content="FFT" Click="FFTButton_Click" Margin="0,0,5,0"/>
+            <CheckBox Name="OpenNewWindowCheckbox" Content="NewWindow" VerticalAlignment="Center" Margin="0,0,5,0"/>
             <TextBox Name="StartIndexInput" Text="-1" Width="50" Margin="0,0,5,0"/>
             <TextBox Name="LengthInput" Text="-1" Width="50" Margin="0,0,5,0"/>
-            <Button Content="Smooth" Click="SmoothButton_Click"/>
+            <Button Content="Smooth" Click="SmoothButton_Click" Margin="0,0,5,0"/>
+            <Button Content="Delete abnormal data" Click="RemoveOutliersButton_Click" Margin="0,0,5,0"/>
+            <TextBox Name="ThresholdInput" Text="0" Width="50" Margin="0,0,5,0"/>
         </StackPanel>
 
         <!-- Bottom row for ScottPlot control -->
