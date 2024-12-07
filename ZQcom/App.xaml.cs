@@ -10,8 +10,8 @@ namespace ZQcom
     public partial class App : Application
     {
     
-        public static ResourceDictionary DefaultTheme { get; private set; }
-        public static ResourceDictionary PurpleTheme { get; private set; }
+        public static ResourceDictionary ?DefaultTheme { get; private set; }
+        public static ResourceDictionary ?PurpleTheme { get; private set; }
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);

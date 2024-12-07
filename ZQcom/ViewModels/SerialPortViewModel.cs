@@ -35,7 +35,7 @@ namespace ZQcom.ViewModels
 
         // 数据绑定属性
         private string _openCloseButtonText = "打开串口";           // 打开/关闭串口按钮的文本
-        private string _sendDataText;                               // 发送的数据
+        private string ?_sendDataText;                              // 发送的数据
         private bool _isHexSend;                                    // 是否以十六进制格式发送数据
         private bool _isHexDisplay;                                 // 是否以十六进制格式显示数据
         private bool _addNewline;                                   // 是否在每行数据末尾添加换行符
@@ -697,7 +697,7 @@ namespace ZQcom.ViewModels
                             // 不开启十六进制转换
                             try
                             {
-                                // 【隐患】这一个函数有大问题，如果是不符合的函数，会直接导致程序崩溃，根本不处理。这个轮子显然造得很差劲
+                                // 【隐患】这一个函数有大问题，如果是不符合的函数，会直接导致程序崩溃，根本不处理。这个轮子个人感觉造得很差劲
                                 // 转换为浮点数
                                 if (float.TryParse(extractedData, out float result))
                                 {

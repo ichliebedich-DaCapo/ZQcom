@@ -192,7 +192,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <avalonEdit:TextEditor  Name="textLogEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
-                                                TextChanged="TextLogEditor_TextChanged"/>
+                                                TextChanged="TextLogEditor_TextChanged" ShowLineNumbers="True"/>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
                             <TextBlock Text="接收字节:" VerticalAlignment="Center" Margin="10,0,10,0" />
                             <TextBlock Text="{Binding SerialPortViewModel.ReceiveBytes}" VerticalAlignment="Center" Margin="10,0,10,0" Width="60" />
@@ -234,9 +234,9 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <avalonEdit:TextEditor  Name="textExtractedEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
-                                       Grid.Column="0"          TextChanged="TextExtractedEditor_TextChanged"/>
+                                       Grid.Column="0"          TextChanged="TextExtractedEditor_TextChanged" ShowLineNumbers="True"/>
                             <avalonEdit:TextEditor  Name="textConvertedEditor"  Background="Transparent"  BorderThickness="0"  IsReadOnly="True" SyntaxHighlighting="ComLog"
-                                       Grid.Column="1"          TextChanged="TextConvertedEditor_TextChanged"/>
+                                       Grid.Column="1"          TextChanged="TextConvertedEditor_TextChanged" ShowLineNumbers="True"/>
                         </Grid>
                         
                     </Grid>
