@@ -7,15 +7,21 @@ using ZQcom.ViewModels;
 using ScottPlot.WPF;
 using MathNet.Numerics.IntegralTransforms;
 using System.Windows.Media.Imaging;
+using System.IO;
+using Newtonsoft.Json;
+using ZQcom.Models;
 
 namespace ZQcom.Views
 {
     public partial class DataDisplayChartWindow : Window
     {
         private List<double> _dataValues;
-        private List<double> _signIndex;
-        private bool _isFFTDisplayed = false;
-        private ScottPlot.Plottables.BarPlot _fftSeries;
+        private readonly List<double> _signIndex;
+
+        private DataDisplayChartViewModel _dataDisplayChartViewModel;
+
+        // 数据打印配置文件路径
+        private readonly string settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Settings", "DataDisplayChartSettings.json");
 
         public DataDisplayChartWindow(List<double> dataValues, List<double> signIndex)
         {
@@ -23,9 +29,50 @@ namespace ZQcom.Views
             _signIndex = signIndex;
 
             InitializeComponent();
+           
+
+            // 确保目录存在
+            string? directoryPath = Path.GetDirectoryName(settingsFilePath);
+            if (!string.IsNullOrEmpty(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            // 读取配置文件
+            DataDisplayChartSettings settings;
+            try
+            {
+                if (File.Exists(settingsFilePath))
+                {
+                    var json = File.ReadAllText(settingsFilePath);
+                    settings = JsonConvert.DeserializeObject<DataDisplayChartSettings>(json) ?? new DataDisplayChartSettings();
+                }
+                else
+                {
+                    settings = new DataDisplayChartSettings(); // 使用默认配置
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录异常或适当处理
+                MessageBox.Show($"加载设置时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                settings = new DataDisplayChartSettings(); // 使用默认配置
+            }
+
+            _dataDisplayChartViewModel = new DataDisplayChartViewModel(dataValues,signIndex,settings);
+
+            // 创建并绑定视图模型
+            DataContext = _dataDisplayChartViewModel;// 将 DataContext 设置为当前窗口实例
+
+            // --------传入组件-------
+            _dataDisplayChartViewModel._dataChartPlot = DataChartPlot;
+
             Loaded += Window_Loaded;
+            
         }
 
+
+        // ----------------------------窗口相关方法----------------------------
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // 生成X轴数据
@@ -39,131 +86,22 @@ namespace ZQcom.Views
             }
 
             // 添加数据到现有的 WpfPlot 控件
-            plot.Plot.Add.Scatter(xData, _dataValues);
-            plot.Plot.XLabel("Index");
-            plot.Plot.YLabel("Value");
+            DataChartPlot.Plot.Add.Scatter(xData, _dataValues);
+            DataChartPlot.Plot.XLabel("Index");
+            DataChartPlot.Plot.YLabel("Value");
 
             // 添加标记
             foreach (double index in _signIndex)
             {
-                plot.Plot.Add.VerticalLine(index);
+                DataChartPlot.Plot.Add.VerticalLine(index);
             }
 
-            plot.Plot.Axes.AutoScale();
+            DataChartPlot.Plot.Axes.AutoScale();
             // 刷新 WpfPlot 控件以显示更新后的图表
-            plot.Refresh();
+            DataChartPlot.Refresh();
         }
 
-        private void FFTButton_Click(object sender, RoutedEventArgs e)
-        {
-            int startIndex = int.Parse(StartIndexInput.Text);
-            int length = int.Parse(LengthInput.Text);
 
-            if (startIndex == -1 && length == -1)
-            {
-                startIndex = 0;
-                length = _dataValues.Count;
-            }
-            else if (length > _dataValues.Count - startIndex || startIndex >= _dataValues.Count)
-            {
-                MessageBox.Show("无效的起始位置或长度。");
-                return;
-            }
-
-            var fftData = _dataValues.Skip(startIndex).Take(length).ToArray();
-            var fftResult = ComputeFFT(fftData);
-
-            if (OpenNewWindowCheckbox.IsChecked.Value)
-            {
-                DisplayFFTInNewWindow(fftResult);
-            }
-            else
-            {
-                // Toggle display of FFT result
-                if (_isFFTDisplayed)
-                {
-                    RemoveFFTPlot();
-                }
-                else
-                {
-                    DisplayFFT(fftResult);
-                }
-                _isFFTDisplayed = !_isFFTDisplayed;
-            }
-        }
-
-        private float[] ComputeFFT(double[] data)
-        {
-            var complexData = new MathNet.Numerics.Complex32[data.Length];
-            for (int i = 0; i < data.Length; i++)
-            {
-                complexData[i] = new MathNet.Numerics.Complex32((float)data[i], 0);
-            }
-
-            Fourier.Forward(complexData, FourierOptions.Matlab);
-
-            var magnitudes = complexData.Select(c => c.Magnitude).ToArray();
-
-            return magnitudes;
-        }
-
-        private void DisplayFFT(float[] fftResult)
-        {
-            List<double> xData = Enumerable.Range(0, fftResult.Length).Select(i => (double)i).ToList();
-            _fftSeries = plot.Plot.Add.Bars(xData, fftResult);
-            plot.Refresh();
-        }
-
-        private void RemoveFFTPlot()
-        {
-            if (_fftSeries != null)
-            {
-                plot.Plot.Remove(_fftSeries);
-                _fftSeries = null;
-            }
-            plot.Refresh();
-        }
-
-        private void SmoothButton_Click(object sender, RoutedEventArgs e)
-        {
-            // Placeholder for smooth button functionality
-            MessageBox.Show("Smoothing not yet implemented.");
-        }
-
-        private void RemoveOutliersButton_Click(object sender, RoutedEventArgs e)
-        {
-            double threshold = double.Parse(ThresholdInput.Text);
-            _dataValues = _dataValues.Where(value => Math.Abs(value) <= threshold).ToList();
-
-            // Regenerate X-axis data
-            List<double> xData = Enumerable.Range(0, _dataValues.Count).Select(i => (double)i).ToList();
-
-            // Clear existing plots
-            plot.Plot.Clear();
-
-            // Add updated data to the plot
-            plot.Plot.Add.Scatter(xData, _dataValues);
-            plot.Plot.XLabel("Index");
-            plot.Plot.YLabel("Value");
-
-            // Add markers
-            foreach (double index in _signIndex)
-            {
-                if (index < _dataValues.Count)
-                {
-                    plot.Plot.Add.VerticalLine(index);
-                }
-            }
-
-            plot.Plot.Axes.AutoScale();
-            plot.Refresh();
-        }
-
-        private void DisplayFFTInNewWindow(float[] fftResult)
-        {
-            var fftWindow = new FFTWindow(fftResult);
-            fftWindow.Show();
-        }
     }
 }
 
