@@ -15,7 +15,7 @@ namespace ZQcom.Models
         // 显示长度
         public int FFTLengthInput { get; set; } = -1;
         // 阈值
-        public int ThresholdInput { get; set; } = 100;
+        public float ThresholdInput { get; set; } = 100;
 
 
     }

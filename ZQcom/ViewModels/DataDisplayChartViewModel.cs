@@ -86,6 +86,8 @@ namespace ZQcom.ViewModels
 
         // ----------------------------事件绑定----------------------------
         public ICommand FFTCommand => new RelayCommand(FFT);
+        public ICommand DeleteAbnormalDataCommand => new RelayCommand(DeleteAbnormalData);
+
         private void FFT()
         {
             int startIndex =FFTStartIndexInput;
@@ -162,7 +164,7 @@ namespace ZQcom.ViewModels
             MessageBox.Show("Smoothing not yet implemented.");
         }
 
-        private void RemoveOutliersButton_Click(object sender, RoutedEventArgs e)
+        private void DeleteAbnormalData()
         {
             double threshold = ThresholdInput;
             _dataValues = _dataValues.Where(value => Math.Abs(value) <= threshold).ToList();
@@ -191,7 +193,7 @@ namespace ZQcom.ViewModels
             DataChartPlot?.Refresh();
         }
 
-        private void DisplayFFTInNewWindow(float[] fftResult)
+        private static void DisplayFFTInNewWindow(float[] fftResult)
         {
             var fftWindow = new FFTWindow(fftResult);
             fftWindow.Show();
@@ -235,8 +237,8 @@ namespace ZQcom.ViewModels
         }
 
         // 阈值
-        private int _thresholdInput;
-        public int ThresholdInput
+        private float _thresholdInput;
+        public float ThresholdInput
         {
             get => _thresholdInput;
             set
