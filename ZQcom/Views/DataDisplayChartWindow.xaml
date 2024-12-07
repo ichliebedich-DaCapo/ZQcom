@@ -1,8 +1,26 @@
 <Window x:Class="ZQcom.Views.DataDisplayChartWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+        xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         Title="DataChart" Height="600" Width="1000">
     <Grid>
-        <sp:WpfPlot Name="plot" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top row for buttons and input fields -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+            <Button Content="FFT" Click="FFTButton_Click" Margin="0,0,5,0"/>
+            <TextBox Name="StartIndexInput" Text="-1" Width="50" Margin="0,0,5,0"/>
+            <TextBox Name="LengthInput" Text="-1" Width="50" Margin="0,0,5,0"/>
+            <Button Content="Smooth" Click="SmoothButton_Click"/>
+        </StackPanel>
+
+        <!-- Bottom row for ScottPlot control -->
+        <sp:WpfPlot Name="plot" Grid.Row="1"/>
     </Grid>
 </Window>
+
+
+
