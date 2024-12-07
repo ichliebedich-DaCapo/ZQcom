@@ -19,8 +19,8 @@ namespace ZQcom.ViewModels
     public class ChartViewModel : ViewModelBase
     {
         private ChartModel _chartModel;                                     // 图表数据
-        private int _maxChartPoints;                                  // 图表最大数据点数
-        private bool _isDisableAnimation;                           // 禁用动画
+        private int _maxChartPoints;                                        // 图表最大数据点数
+        private bool _isDisableAnimation;                                   // 禁用动画
         private List<double> _dataDisplayChartValues = [];                  // 数据显示图表数据
         private List<double> _signIndexValues = [];                         // 标记索引
 
@@ -31,8 +31,7 @@ namespace ZQcom.ViewModels
         public ChartViewModel(IEventAggregator eventAggregator,ChartSettings chartSettings)
         {
             // 初始化配置
-            _maxChartPoints=chartSettings.MaxChartPoints;
-            _isDisableAnimation = chartSettings.IsDisableAnimation;
+            SetSettings(chartSettings);
 
             _chartModel = new ChartModel();
             // 订阅事件
@@ -45,6 +44,7 @@ namespace ZQcom.ViewModels
 
 
         // ------------------------私有方法------------------------------
+        // 获取配置
         public ChartSettings GetSettings()
         {
             return new ChartSettings
@@ -53,7 +53,7 @@ namespace ZQcom.ViewModels
                 IsDisableAnimation = _isDisableAnimation
             };
         }
-
+        // 加载配置
         public void SetSettings(ChartSettings settings)
         {
             _maxChartPoints = settings.MaxChartPoints;

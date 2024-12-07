@@ -16,7 +16,7 @@ namespace ZQcom.Models
 
         public ChartModel()
         {
-            Series = new SeriesCollection();
+            Series = [];
             // 初始化第一个系列
             AddSeries("Data");
             AddSeries("FFT");
