@@ -1,5 +1,6 @@
 ﻿using Prism.Events;
 using System;
+using ZQcom.Models;
 using ZQcom.Services;
 using ZQcom.ViewModels;
 
@@ -11,11 +12,11 @@ namespace ZQcom.ViewModels
         private readonly SerialPortViewModel _serialPortViewModel;
         private readonly ChartViewModel _chartViewModel;
 
-        public MainViewModel()
+        public MainViewModel(AppSettings appSettings)
         {
             _eventAggregator = new EventAggregator();
-            _serialPortViewModel = new SerialPortViewModel(_eventAggregator);
-            _chartViewModel = new ChartViewModel(_eventAggregator);
+            _serialPortViewModel = new SerialPortViewModel(_eventAggregator,appSettings.SerialPort);
+            _chartViewModel = new ChartViewModel(_eventAggregator,appSettings.Chart);
 
         }
 

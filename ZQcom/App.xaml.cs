@@ -25,8 +25,6 @@ namespace ZQcom
 
         protected override void OnExit(ExitEventArgs e)
         {
-            // 默认关闭窗口时，保存日志
-            //_mainViewModel.SerialPortViewModel.SaveLog();
             base.OnExit(e);
         }
 

@@ -89,7 +89,7 @@ namespace ZQcom.ViewModels
 
 
         // ------------------------初始化------------------------------
-        public SerialPortViewModel(IEventAggregator eventAggregator)
+        public SerialPortViewModel(IEventAggregator eventAggregator,SerialPortSettings serialPortSettings)
         {
             // --------------变量初始化--------------
             _serialPortService = new SerialPortService();
@@ -99,6 +99,8 @@ namespace ZQcom.ViewModels
             StopBitOptions = [StopBits.None, StopBits.One, StopBits.Two, StopBits.OnePointFive];
             DataBitOptions = [5, 6, 7, 8];
 
+            // --------------加载配置属性--------------
+            SetSettings(serialPortSettings);
 
             //--------------前置准备--------------
             // 刷新串口列表
@@ -206,6 +208,28 @@ namespace ZQcom.ViewModels
                 _dataProcessingTask.Wait(); // 等待任务完成
                 _dataProcessingTask = null;
             }
+        }
+
+        // 获取配置
+        public SerialPortSettings GetSettings()
+        {
+            return new SerialPortSettings
+            {
+                SelectedSerialPort = SelectedSerialPort,
+                SelectedBaudRate = SelectedBaudRate,
+                SelectedParity = SelectedParity,
+                SelectedStopBits = SelectedStopBits,
+                SelectedDataBits = SelectedDataBits
+            };
+        }
+        // 设置串口参数
+        public void SetSettings(SerialPortSettings settings)
+        {
+            SelectedSerialPort = settings.SelectedSerialPort;
+            SelectedBaudRate = settings.SelectedBaudRate;
+            SelectedParity = settings.SelectedParity;
+            SelectedStopBits = settings.SelectedStopBits;
+            SelectedDataBits = settings.SelectedDataBits;
         }
 
         // ---------------------------------绑定事件----------------------------------------
